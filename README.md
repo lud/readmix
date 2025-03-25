@@ -15,7 +15,7 @@
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed
 by adding `readmix` to your list of dependencies in `mix.exs`:
 
-<!-- rdmx :app_dep only:"dev,test" runtime:false -->
+<!-- rdmx :app_dep only:"dev,test" runtime:false vsn:$app_vsn -->
 ```elixir
 def deps do
   [

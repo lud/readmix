@@ -5,7 +5,7 @@ defmodule Readmix.MixProject do
   def project do
     [
       app: :readmix,
-      version: "0.1.0",
+      version: "0.1.1",
       description: "A tool to generate parts of documentation with custom generator functions.",
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
@@ -16,7 +16,8 @@ defmodule Readmix.MixProject do
       deps: deps(),
       dialyzer: dialyzer(),
       docs: docs(),
-      package: package()
+      package: package(),
+      versioning: versioning()
     ]
   end
 
@@ -41,7 +42,8 @@ defmodule Readmix.MixProject do
       {:briefly, "~> 0.5.1", only: :test},
       {:dialyxir, "~> 1.4", only: :test, runtime: false},
       {:ex_check, "~> 0.16.0", only: [:dev, :test]},
-      {:mix_audit, "~> 2.1", only: [:dev, :test]}
+      {:mix_audit, "~> 2.1", only: [:dev, :test]},
+      {:mix_version, "~> 2.4", only: [:dev, :test], runtime: false}
     ]
   end
 
@@ -75,5 +77,28 @@ defmodule Readmix.MixProject do
       plt_add_apps: [:ex_unit, :mix, :cli_mate],
       plt_local_path: "_build/plts"
     ]
+  end
+
+  defp versioning do
+    [
+      annotate: true,
+      before_commit: [
+        &update_readme/1,
+        {:add, "README.md"},
+        &gen_changelog/1,
+        {:add, "CHANGELOG.md"}
+      ]
+    ]
+  end
+
+  def update_readme(vsn) do
+    :ok = Readmix.update_file(Readmix.new(vars: %{app_vsn: vsn}), "README.md")
+  end
+
+  defp gen_changelog(vsn) do
+    case System.cmd("git", ["cliff", "--tag", vsn, "-o", "CHANGELOG.md"], stderr_to_stdout: true) do
+      {_, 0} -> IO.puts("Updated CHANGELOG.md with #{vsn}")
+      {out, _} -> {:error, "Could not update CHANGELOG.md:\n\n #{out}"}
+    end
   end
 end

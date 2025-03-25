@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.1] - 2025-03-25
+
+### 🐛 Bug Fixes
+
+- Use otp_app name in backups directory
+
 ## [0.2.0] - 2025-03-25
 
 ### 🚀 Features

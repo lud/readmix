@@ -6,7 +6,7 @@ defmodule Readmix.MixProject do
     [
       app: :readmix,
       version: "0.1.0",
-      elixir: "~> 1.18",
+      elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
       compilers: [:leex, :yecc | Mix.compilers()],
       leex_options: [error_location: :column, verbose: true, deterministic: true],

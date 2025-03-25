@@ -64,12 +64,7 @@ defmodule Readmix.MixProject do
   end
 
   def cli do
-    [
-      preferred_envs: [
-        "coveralls.html": :test,
-        dialyzer: :test
-      ]
-    ]
+    [preferred_envs: [dialyzer: :test]]
   end
 
   defp dialyzer do

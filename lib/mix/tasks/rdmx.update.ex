@@ -99,8 +99,7 @@ defmodule Mix.Tasks.Rdmx.Update do
       Map.new(options.var, fn var ->
         case String.split(var, "=", parts: 2) do
           ["" | _] -> CLI.halt_error("received a variable with empty key")
-          [k, v] -> {k, v}
-          [k] -> {k, true}
+          [k, v] -> {String.to_atom(k), v}
         end
       end)
 

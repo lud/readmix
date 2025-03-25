@@ -120,7 +120,7 @@ defmodule Readmix do
     Enum.reduce(contexts, external_vars, fn mod, acc ->
       case mod.get_vars() do
         map when is_map(map) ->
-          Enum.into(mod.get_vars(), acc)
+          Map.merge(mod.get_vars(), acc)
 
         other ->
           raise "invalid return value from #{inspect(mod)}.get_vars/0, expected a map, got: #{inspect(other)}"

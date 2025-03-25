@@ -10,14 +10,23 @@ defmodule Readmix.Contexts.Defaults do
 
   @impl true
   def get_vars do
-    %{otp_app: otp_app()}
+    %{
+      otp_app: otp_app(),
+      app_vsn: app_vsn()
+    }
   end
 
   @doc """
-  Returns the OTP application atom (example: `:readmix`) of the current
-  application.
+  The OTP application atom (example: `:readmix`) of the current application.
   """
   def otp_app do
     Keyword.fetch!(Mix.Project.config(), :app)
+  end
+
+  @doc """
+  The current application version from `mix.exs`.
+  """
+  def app_vsn do
+    Keyword.fetch!(Mix.Project.config(), :version)
   end
 end

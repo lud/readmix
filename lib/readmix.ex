@@ -38,7 +38,7 @@ defmodule Readmix do
   Readmix.new(
     generators: %{my_namespace: MyGeneratorModule},
     vars: %{my_var: "hello"},
-    contexts: [MyContext, Readmix.Contexts.Defaults]
+    contexts: [MyContext | Readmix.default_contexts()]
   )
   ```
   """
@@ -76,16 +76,13 @@ defmodule Readmix do
                   )
 
   defp opt_resolver(opts) do
-    generators =
+    add_generators =
       case opts[:generators] do
-        nil ->
-          Readmix.default_generators()
-
-        mods ->
-          mods
-          |> Map.new()
-          |> Map.put_new(:rdmx, Readmix.Generators.BuiltIn)
+        nil -> config_generators()
+        mods -> mods
       end
+
+    generators = Enum.into(add_generators, default_generators())
 
     Map.new(generators, fn {ns, mod} ->
       actions =
@@ -108,9 +105,14 @@ defmodule Readmix do
         other -> raise "invalid option :vars, expected a map, got: #{inspect(other)}"
       end
 
+    # Unlike generators, the default contexts are not pulled if the
+    # configuration is set.
+    #
+    # config_contexts() returns default_contexts() if the configuration is not
+    # set.
     contexts =
       case opts[:contexts] do
-        nil -> Readmix.default_contexts()
+        nil -> Readmix.config_contexts()
         list when is_list(list) -> list
       end
 
@@ -151,8 +153,8 @@ defmodule Readmix do
   end
 
   defp make_backup_callback(backup_root_dir, call_time) do
-    stamp = Calendar.strftime(call_time, "%x-%H-%M-%S-%f")
-    backup_dir = Path.join(backup_root_dir, "readmix-backup-#{stamp}")
+    stamp = Calendar.strftime(call_time, "%x--%H-%M-%S--%f")
+    backup_dir = Path.join([backup_root_dir, "readmix-backups", stamp])
     File.mkdir_p!(backup_dir)
 
     fn orginal_path, content ->
@@ -178,44 +180,35 @@ defmodule Readmix do
     end
   end
 
-  @default_generators %{rdmx: Readmix.Generators.BuiltIn}
-
-  @doc """
-  Returns the mapping from namespace to generator used by default by Readmix if
-  no `:resolver` or `:generators` option is given to `Readmix.new/1`.
-
-  Those defaults are pulled with `Application.fetch_env(:readmix, :generators)`,
-  which is a configuration value that you can define in `config/dev.exs` or
-  `config/runtime.exs`.
-
-  If not configuration is defined, the default value is
-  `#{inspect(@default_generators)}`.
-  """
+  @doc false
   def default_generators do
-    case Application.fetch_env(:readmix, :generators) do
-      {:ok, generators} when is_map(generators) -> generators
-      :error -> @default_generators
-    end
+    %{rdmx: Readmix.Generators.BuiltIn}
   end
 
-  @default_contexts [Readmix.Contexts.Defaults]
+  @doc false
+  def config_generators do
+    Application.get_env(:readmix, :generators, %{})
+  end
 
   @doc """
-  Returns the list of modules used to define the context of execution. For now
-  this only defines which variables are available for usage in blocks arguments.
+  Returns the default contexts used for built-in generators.
 
-  Those defaults are pulled with `Application.fetch_env(:readmix, :contexts)`,
-  which is a configuration value that you can define in `config/dev.exs` or
-  `config/runtime.exs`.
+  If you need to configure your own contexts but want to use Readmix generators
+  as well, include those contexts in the configuration:
 
-  If not configuration is defined, the default value is
-  `#{inspect(@default_contexts)}`.
+      # config/dev.exs
+      import Config
+
+      config :readmix,
+        contexts: [MyContext1, MyContext2 | Readmix.default_contexts()]
   """
   def default_contexts do
-    case Application.fetch_env(:readmix, :contexts) do
-      {:ok, contexts} when is_list(contexts) -> contexts
-      :error -> @default_contexts
-    end
+    [Readmix.Contexts.Defaults]
+  end
+
+  @doc false
+  def config_contexts do
+    Application.get_env(:readmix, :contexts, default_contexts())
   end
 
   def update_file(rdmx, path) do

@@ -62,6 +62,32 @@ defmodule ReadmixTest do
       assert expected == transform_string!(test_new(generators: %{g: mod}), input)
     end
 
+    test "the rdmx namespace is always available" do
+      # Input block has no content
+      input = """
+      <!-- rdmx :app_dep vsn:"99.99.99" -->
+      <!-- rdmx /:app_dep -->
+      """
+
+      expected = """
+      <!-- rdmx :app_dep vsn:"99.99.99" -->
+      ```elixir
+      def deps do
+        [
+          {:readmix, "~> 99.99"},
+        ]
+      end
+      ```
+      <!-- rdmx /:app_dep -->
+      """
+
+      # Here we pass a generators map, not mapping the rdmx namespace. But it
+      # will still work.
+
+      mod = stub_actions(gen_mock(), [])
+      assert expected == transform_string!(test_new(generators: %{g: mod}), input)
+    end
+
     test "passes a context to the generator" do
       input = """
       Before
@@ -219,7 +245,7 @@ defmodule ReadmixTest do
         |> expect(:generate, fn :some_action, [], _ -> {:ok, ~c"New Content\n"} end)
 
       backup_datetime = ~U[2027-06-05 04:03:02.0102Z]
-      backup_stamp = "2027-06-05-04-03-02-0102"
+      backup_stamp = "2027-06-05--04-03-02--0102"
 
       rdmx =
         Readmix.new(
@@ -247,7 +273,7 @@ defmodule ReadmixTest do
       "/" <> original_path_no_slash = path
 
       expected_backup_path =
-        Path.join(backup_dir, "readmix-backup-#{backup_stamp}/#{original_path_no_slash}")
+        Path.join(backup_dir, "readmix-backups/#{backup_stamp}/#{original_path_no_slash}")
 
       assert File.regular?(expected_backup_path)
       assert original_content == File.read!(expected_backup_path)

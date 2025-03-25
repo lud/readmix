@@ -6,6 +6,7 @@ defmodule Readmix.MixProject do
     [
       app: :readmix,
       version: "0.1.0",
+      description: "A tool to generate parts of documentation with custom generator functions.",
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
       compilers: [:leex, :yecc | Mix.compilers()],

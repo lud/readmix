@@ -23,7 +23,10 @@ defmodule Readmix.Error do
   end
 
   def message(%{kind: :file_error} = e) do
-    "file error when reading #{e.file}, got: #{inspect(e.arg)}"
+    case e.arg do
+      :eisdir -> "updating directories is not supported yet, tried to update #{e.file}"
+      arg -> "file error when reading #{e.file}, got: #{inspect(arg)}"
+    end
   end
 
   def message(%{kind: :undef_var} = e) do

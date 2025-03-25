@@ -1,6 +1,7 @@
 defmodule Readmix do
   alias Readmix.BlockSpec
   alias Readmix.Context
+  alias Readmix.Contexts.Defaults
 
   @moduledoc """
   Readmix is a tool for generating and maintaining documentation with dynamic
@@ -154,7 +155,15 @@ defmodule Readmix do
 
   defp make_backup_callback(backup_root_dir, call_time) do
     stamp = Calendar.strftime(call_time, "%x--%H-%M-%S--%f")
-    backup_dir = Path.join([backup_root_dir, "readmix-backups", stamp])
+
+    backup_dir =
+      Path.join([
+        backup_root_dir,
+        "readmix-backups",
+        Atom.to_string(Defaults.otp_app()),
+        stamp
+      ])
+
     File.mkdir_p!(backup_dir)
 
     fn orginal_path, content ->

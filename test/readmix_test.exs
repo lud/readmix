@@ -273,7 +273,7 @@ defmodule ReadmixTest do
       "/" <> original_path_no_slash = path
 
       expected_backup_path =
-        Path.join(backup_dir, "readmix-backups/#{backup_stamp}/#{original_path_no_slash}")
+        Path.join(backup_dir, "readmix-backups/readmix/#{backup_stamp}/#{original_path_no_slash}")
 
       assert File.regular?(expected_backup_path)
       assert original_content == File.read!(expected_backup_path)

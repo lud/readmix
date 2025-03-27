@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.2] - 2025-03-27
+
+### 🚀 Features
+
+- Backups are always enabled by default
+
+### 🐛 Bug Fixes
+
+- Validate actions params schema
+
 ## [0.2.1] - 2025-03-25
 
 ### 🐛 Bug Fixes

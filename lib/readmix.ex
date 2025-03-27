@@ -132,13 +132,9 @@ defmodule Readmix do
   end
 
   defp opt_backup(opts) do
-    case opts[:backup?] do
+    case Keyword.get(opts, :backup?, true) do
       true ->
-        backup_root_dir =
-          case opts[:backup_dir] do
-            nil -> raise ArgumentError, "option :backup_dir is required when :backup? is true"
-            dir -> dir
-          end
+        backup_root_dir = Keyword.get_lazy(opts, :backup_dir, &default_backup_directory/0)
 
         call_time =
           case opts[:backup_datetime] do
@@ -153,13 +149,22 @@ defmodule Readmix do
     end
   end
 
+  @doc """
+  Returns the default backup directory for updated files.
+
+  Readmix will append the otp_app name to the path so it is safe to use the same
+  directory for multiple applications.
+  """
+  def default_backup_directory do
+    Path.join(System.tmp_dir(), "readmix-backups")
+  end
+
   defp make_backup_callback(backup_root_dir, call_time) do
     stamp = Calendar.strftime(call_time, "%x--%H-%M-%S--%f")
 
     backup_dir =
       Path.join([
         backup_root_dir,
-        "readmix-backups",
         Atom.to_string(Defaults.otp_app()),
         stamp
       ])

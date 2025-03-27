@@ -83,7 +83,7 @@ defmodule Mix.Tasks.Rdmx.Update do
   """
 
   @doc false
-  def default_opt(:backup_dir), do: System.tmp_dir!()
+  def default_opt(:backup_dir), do: Readmix.default_backup_directory()
 
   @impl true
   def run(argv) do

@@ -66,10 +66,11 @@ defmodule Readmix do
                       keys: [
                         as: [type: :atom],
                         params: [
-                          type: :keyword_list,
-                          required: true
-                          # TODO await https://github.com/dashbitco/nimble_options/issues/141
+                          type: :keyword_list
+                          # TODO maybe await https://github.com/dashbitco/nimble_options/issues/141
                           # keys: NimbleOptions.options_schema()
+                          #
+                          # It's not going to happen anytime soon thoug.
                         ],
                         doc: [type: :string]
                       ]
@@ -89,13 +90,24 @@ defmodule Readmix do
       actions =
         mod.actions()
         |> NimbleOptions.validate!(@actions_schema)
-        |> Map.new(fn {key, spec} ->
-          params = NimbleOptions.new!(Keyword.fetch!(spec, :params))
-          {key, params}
+        |> Map.new(fn {action, spec} ->
+          params = Keyword.get(spec, :params, [])
+          params = build_params_schema(params, ns, mod, action)
+          {action, params}
         end)
 
       {ns, {mod, actions}}
     end)
+  end
+
+  defp build_params_schema(raw_schema, ns, mod, action) do
+    NimbleOptions.new!(raw_schema)
+  rescue
+    e ->
+      reraise ArgumentError,
+              "invalid action parameters for action #{inspect(action)} of #{inspect(mod)} (mapped as #{inspect(ns)}), " <>
+                ":params should be a valid NimbleOptions schema,\n\n" <> Exception.message(e),
+              __STACKTRACE__
   end
 
   defp opt_vars(opts) do

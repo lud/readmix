@@ -569,8 +569,54 @@ defmodule ReadmixTest do
   end
 
   describe "generators specs errors" do
-    @describetag :skip
-    test "invalid nimble schemas in options"
-    test "params should be optional"
+    test "invalid nimble schemas in options" do
+      input = """
+      <!-- rdmx g:some_action -->
+      Content
+      <!-- rdmx /g:some_action -->
+      """
+
+      path = generate_file(input)
+
+      mod =
+        expect(gen_mock(), :actions, fn ->
+          [some_action: [params: [some_arg: [type: :INVALID_NIMBLEOPTIONS_TYPE, required: true]]]]
+        end)
+
+      assert_raise ArgumentError, ~r/invalid action parameters for action :some_action/, fn ->
+        Readmix.new(generators: %{g: mod})
+      end
+    end
+
+    test "params should be optional" do
+      input = """
+      Before
+      <!-- rdmx g:sometf -->
+      Old Inside
+      <!-- rdmx /g:sometf -->
+      After
+      """
+
+      expected = """
+      Before
+      <!-- rdmx g:sometf -->
+      New Inside
+      <!-- rdmx /g:sometf -->
+      After
+      """
+
+      # The mapped module does not export params in the action spec
+
+      mod =
+        gen_mock()
+        |> expect(:actions, fn ->
+          [sometf: []]
+        end)
+        |> expect(:generate, fn :sometf, [], _ ->
+          {:ok, ~c"New Inside\n"}
+        end)
+
+      assert expected == transform_string!(test_new(generators: %{g: mod}), input)
+    end
   end
 end

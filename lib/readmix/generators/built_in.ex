@@ -75,6 +75,24 @@ defmodule Readmix.Generators.BuiltIn do
       ]
     ]
 
+  @doc """
+  Defines a named section for extraction with `Readmix.Docs.extract_section/2`.
+
+  The section itself doesn't transform content but allows nested blocks
+  to be processed.
+
+  Note that uniqueness of names is not enforced.
+  """
+  action :section,
+    as: :generate_section,
+    params: [
+      name: [
+        type: :string,
+        required: true,
+        doc: "The name of the section"
+      ]
+    ]
+
   @moduledoc """
   Implements the built-in generators for Readmix.
 
@@ -228,5 +246,10 @@ defmodule Readmix.Generators.BuiltIn do
 
   defp markdown_badge(img_alt, img_url, link_url) do
     "[![#{img_alt}](#{img_url})](#{link_url})"
+  end
+
+  defp generate_section(_params, context) do
+    %{previous_content: prev, readmix: rdmx} = context
+    Readmix.blocks_to_iodata(rdmx, prev)
   end
 end

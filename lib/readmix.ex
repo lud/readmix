@@ -419,4 +419,29 @@ defmodule Readmix do
   defp convert_error(reason, path, loc) do
     Readmix.Error.convert(reason, path, loc)
   end
+
+  @doc """
+  Renders a block or a list of blocks as iodata without processing.
+  """
+  def content_to_iodata(%BlockSpec{} = block) do
+    %{
+      content: subs,
+      raw_header: raw_header,
+      raw_footer: raw_footer
+    } = block
+
+    [raw_header, content_to_iodata(subs), raw_footer]
+  end
+
+  def content_to_iodata([{:text, text} | blocks]) do
+    [text | content_to_iodata(blocks)]
+  end
+
+  def content_to_iodata([{:generated, spec} | blocks]) do
+    [content_to_iodata(spec) | content_to_iodata(blocks)]
+  end
+
+  def content_to_iodata([]) do
+    []
+  end
 end

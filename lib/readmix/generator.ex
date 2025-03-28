@@ -38,7 +38,6 @@ defmodule Readmix.Generator do
 
     @actions [
       my_action: [
-        as: :generate_my,
         params: [
           param1: [type: :string, doc: "Parameter documentation"]
         ],
@@ -53,7 +52,7 @@ defmodule Readmix.Generator do
     \"""
 
     @impl true
-    def actions, do: action
+    def actions, do: @actions
 
     @impl true
     def generate(:my_action, params, context) do

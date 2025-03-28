@@ -1,4 +1,6 @@
 defmodule Readmix.Generators.BuiltInTest do
+  import Mox
+  import Readmix.TestHelpers
   use ExUnit.Case, async: true
 
   describe "app_dep" do
@@ -24,12 +26,16 @@ defmodule Readmix.Generators.BuiltInTest do
       iodata
     end
 
-    defp test_new do
-      Readmix.new([])
+    defp test_new(opts \\ []) do
+      Readmix.new(opts)
     end
 
     defp transform_string!(input) do
-      case Readmix.transform_string(test_new(), input) do
+      transform_string!(test_new(), input)
+    end
+
+    defp transform_string!(rdmx, input) do
+      case Readmix.transform_string(rdmx, input) do
         {:ok, output} -> output
         {:error, e} -> raise e
       end
@@ -201,6 +207,79 @@ defmodule Readmix.Generators.BuiltInTest do
       """
 
       assert expected == transform_string!(input)
+    end
+  end
+
+  describe "section" do
+    test "requires a name argument" do
+      input = """
+      <!-- rdmx rdmx:section -->
+      Some content
+      <!-- rdmx /rdmx:section -->
+      """
+
+      assert {:error, %Readmix.Error{kind: :params_validation_error} = e} =
+               Readmix.transform_string(test_new(), input)
+
+      assert Exception.message(e) =~ "required :name param not found"
+    end
+
+    test "does not accept extra arguments" do
+      # This is to ensure that we can mach on the keyword list in the
+      # extract_section feature.
+      input = """
+      <!-- rdmx rdmx:section name:stuff other:123 -->
+      Some content
+      <!-- rdmx /rdmx:section -->
+      """
+
+      assert {:error, %Readmix.Error{kind: :params_validation_error} = e} =
+               Readmix.transform_string(test_new(), input)
+
+      assert Exception.message(e) =~ "unknown params [:other]"
+    end
+
+    test "processes nested blocks" do
+      input = """
+      <!-- rdmx rdmx:section name:my_section -->
+      Before
+      <!-- rdmx g:sometf -->
+      Old Content
+      <!-- rdmx /g:sometf -->
+      After
+      <!-- rdmx /rdmx:section -->
+      """
+
+      expected = """
+      <!-- rdmx rdmx:section name:my_section -->
+      Before
+      <!-- rdmx g:sometf -->
+      New Content
+      <!-- rdmx /g:sometf -->
+      After
+      <!-- rdmx /rdmx:section -->
+      """
+
+      mod =
+        gen_mock()
+        |> stub_actions([:sometf])
+        |> expect(:generate, fn :sometf, [], _ ->
+          {:ok, ~c"New Content\n"}
+        end)
+
+      assert expected == transform_string!(test_new(generators: %{g: mod}), input)
+    end
+
+    test "leaves content unchanged if no nested blocks" do
+      input = """
+      <!-- rdmx rdmx:section name:my_section -->
+      Some content without nested blocks
+      <!-- rdmx /rdmx:section -->
+      """
+
+      expected = input
+
+      assert expected == transform_string!(test_new(), input)
     end
   end
 end

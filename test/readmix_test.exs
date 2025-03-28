@@ -217,6 +217,62 @@ defmodule ReadmixTest do
       rdmx = test_new(generators: %{g: mod}, vars: %{some_var: 1234})
       _ = transform_string!(rdmx, input)
     end
+
+    test "section requires a name argument" do
+      input = """
+      <!-- rdmx rdmx:section -->
+      Some content
+      <!-- rdmx /rdmx:section -->
+      """
+
+      path = generate_file(input)
+
+      assert {:error, %Readmix.Error{kind: :params_validation_error}} =
+               Readmix.update_file(test_new(), path)
+    end
+
+    test "section processes nested blocks" do
+      input = """
+      <!-- rdmx rdmx:section name:my_section -->
+      Before
+      <!-- rdmx g:sometf -->
+      Old Content
+      <!-- rdmx /g:sometf -->
+      After
+      <!-- rdmx /rdmx:section -->
+      """
+
+      expected = """
+      <!-- rdmx rdmx:section name:my_section -->
+      Before
+      <!-- rdmx g:sometf -->
+      New Content
+      <!-- rdmx /g:sometf -->
+      After
+      <!-- rdmx /rdmx:section -->
+      """
+
+      mod =
+        gen_mock()
+        |> stub_actions([:sometf])
+        |> expect(:generate, fn :sometf, [], _ ->
+          {:ok, ~c"New Content\n"}
+        end)
+
+      assert expected == transform_string!(test_new(generators: %{g: mod}), input)
+    end
+
+    test "section leaves content unchanged if no nested blocks" do
+      input = """
+      <!-- rdmx rdmx:section name:my_section -->
+      Some content without nested blocks
+      <!-- rdmx /rdmx:section -->
+      """
+
+      expected = input
+
+      assert expected == transform_string!(test_new(), input)
+    end
   end
 
   describe "updating files" do
@@ -570,14 +626,6 @@ defmodule ReadmixTest do
 
   describe "generators specs errors" do
     test "invalid nimble schemas in options" do
-      input = """
-      <!-- rdmx g:some_action -->
-      Content
-      <!-- rdmx /g:some_action -->
-      """
-
-      path = generate_file(input)
-
       mod =
         expect(gen_mock(), :actions, fn ->
           [some_action: [params: [some_arg: [type: :INVALID_NIMBLEOPTIONS_TYPE, required: true]]]]

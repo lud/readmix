@@ -48,14 +48,42 @@ defmodule Readmix.Parser do
     defp loc({line, col}) do
       "#{line}:#{col}"
     end
+
+    # Parser/lexer errors may contain location and/or source. In case they do not,
+    # errors are always wrapped in a tuple with the loc/source of the parent
+    # parser actionction.
+    def convert_error({reason, loc, source}, file) do
+      {kind, loc, source, arg} =
+        case reason do
+          simple
+          when simple in [
+                 :illegal_block_end_params,
+                 :unterminated_comment_tag,
+                 :no_block_end,
+                 :no_block_start
+               ] ->
+            {simple, loc, source, nil}
+
+          {{_line, _col} = loc, :rdmx_parser, msg} ->
+            {:syntax_error, loc, source, msg}
+
+          {999_999 = _no_loc, :rdmx_parser, msg} ->
+            {:syntax_error, loc, source, msg}
+
+          {{_, _} = loc, :rdmx_lexer, {:illegal, chars}} ->
+            {:syntax_error, loc, source, {:illegal, chars}}
+        end
+
+      %ParseError{kind: kind, loc: loc, source: source, arg: arg, file: file}
+    end
   end
 
   def parse_string(source, source_path) do
     chunks = parse_string(to_charlist(source), {1, 1}, [], [])
-    blocks = build_blocks(chunks, source_path, [])
+    blocks = build_blocks(chunks, source_path)
     {:ok, blocks}
   catch
-    :throw, t -> {:error, convert_error(t, source_path)}
+    :throw, t -> {:error, ParseError.convert_error(t, source_path)}
   end
 
   @com_start_2 ~c"<!-- rdmx "
@@ -183,46 +211,55 @@ defmodule Readmix.Parser do
     {:illegal_block_end_params, loc} -> throw({:illegal_block_end_params, loc, source})
   end
 
-  defp build_blocks(chunks, source_path, acc)
+  # to build nested blocks with same ns/action like sections we need to know
+  # where to stop building the current block and return the rest to the higher
+  # level.
+  #
+  # At the top level we want the full content so we fake an :"$eof" section/ns
 
-  defp build_blocks([{:text, _} = raw | chunks], source_path, acc),
-    do: build_blocks(chunks, source_path, [raw | acc])
+  defp build_blocks(chunks, source_path) do
+    {:ok, blocks, []} =
+      build_blocks(chunks, source_path, _end_ns = :"$eof", _end_action = :"$eof", _acc = [])
 
-  defp build_blocks([{:block_start, loc, header} | chunks], source_path, acc) do
+    blocks
+  end
+
+  defp build_blocks([{:text, _} = raw | chunks], source_path, end_ns, end_action, acc),
+    do: build_blocks(chunks, source_path, end_ns, end_action, [raw | acc])
+
+  defp build_blocks([{:block_start, loc, header} | chunks], source_path, end_ns, end_action, acc) do
     {ns, action, _, raw_header} = header
 
-    case collect_block(ns, action, chunks, []) do
-      {:ok, {{:block_end, _, footer}, content, chunks_rest}} ->
-        block = build_block(header, footer, content, source_path, loc)
-        build_blocks(chunks_rest, source_path, [block | acc])
+    case build_blocks(chunks, source_path, ns, action, []) do
+      {:ok, content, [{:block_end, _, footer} | chunks_rest]} ->
+        block = wrap_block(header, footer, content, source_path, loc)
+        build_blocks(chunks_rest, source_path, end_ns, end_action, [block | acc])
 
-      {:error, :no_block_end} ->
+      {:ok, _, []} ->
         throw({:no_block_end, loc, raw_header})
     end
   end
 
-  defp build_blocks([{:block_end, loc, footer} | _], _, _acc) do
+  defp build_blocks(
+         [{:block_end, _, {end_ns, end_action, _, _}} | _] = rest,
+         _,
+         end_ns,
+         end_action,
+         acc
+       ) do
+    {:ok, :lists.reverse(acc), rest}
+  end
+
+  defp build_blocks([{:block_end, loc, footer} | _], _, _, _, _acc) do
     {_, _, _, raw_footer} = footer
     throw({:no_block_start, loc, raw_footer})
   end
 
-  defp build_blocks([], _, acc) do
-    :lists.reverse(acc)
+  defp build_blocks([], _, _, _, acc) do
+    {:ok, :lists.reverse(acc), []}
   end
 
-  defp collect_block(ns, action, [{:block_end, _, {ns, action, _, _}} = found | chunks], acc) do
-    {:ok, {found, :lists.reverse(acc), chunks}}
-  end
-
-  defp collect_block(ns, action, [sub | chunks], acc) do
-    collect_block(ns, action, chunks, [sub | acc])
-  end
-
-  defp collect_block(_ns, _action, [], _acc) do
-    {:error, :no_block_end}
-  end
-
-  defp build_block(
+  defp wrap_block(
          {ns, action, params, raw_header},
          {ns, action, nil, raw_footer},
          content,
@@ -234,37 +271,9 @@ defmodule Readmix.Parser do
        raw_header: raw_header,
        raw_footer: raw_footer,
        generator: {ns, action, params},
-       content: build_blocks(content, source_path, []),
+       content: content,
        file: source_path,
        loc: loc
      }}
-  end
-
-  # Parser/lexer errors may contain location and/or source. In case they do not,
-  # errors are always wrapped in a tuple with the loc/source of the parent
-  # parser actionction.
-  defp convert_error({reason, loc, source}, file) do
-    {kind, loc, source, arg} =
-      case reason do
-        simple
-        when simple in [
-               :illegal_block_end_params,
-               :unterminated_comment_tag,
-               :no_block_end,
-               :no_block_start
-             ] ->
-          {simple, loc, source, nil}
-
-        {{_line, _col} = loc, :rdmx_parser, msg} ->
-          {:syntax_error, loc, source, msg}
-
-        {999_999 = _no_loc, :rdmx_parser, msg} ->
-          {:syntax_error, loc, source, msg}
-
-        {{_, _} = loc, :rdmx_lexer, {:illegal, chars}} ->
-          {:syntax_error, loc, source, {:illegal, chars}}
-      end
-
-    %ParseError{kind: kind, loc: loc, source: source, arg: arg, file: file}
   end
 end

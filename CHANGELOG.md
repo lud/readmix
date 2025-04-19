@@ -2,7 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
-## [unreleased]
+## [0.4.0] - 2025-04-19
+
+### 🚀 Features
+
+- Added the eval action in built in generator
 
 ### ⚙️ Miscellaneous Tasks
 

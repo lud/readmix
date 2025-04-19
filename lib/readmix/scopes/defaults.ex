@@ -1,8 +1,9 @@
-defmodule Readmix.Contexts.Defaults do
-  @behaviour Readmix.Context
+defmodule Readmix.Scopes.Defaults do
+  @behaviour Readmix.Scope
 
   @moduledoc """
-  This is the default Readmix context for variables.
+  This is the default Readmix scope that provides variables to generator
+  actions.
 
   Every variable is defined as a function in this module. Refer to the functions
   documentation to see which variables are defined.

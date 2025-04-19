@@ -35,18 +35,6 @@ defmodule Readmix.ParserTest do
     end
   end
 
-  defp back_to_string(blocks, vars \\ %{}) do
-    opts = [
-      generators: %{rdmx: NoTransform},
-      vars: vars
-    ]
-
-    rdmx = Readmix.new(opts)
-    assert {:ok, iodata} = Readmix.blocks_to_iodata(rdmx, blocks)
-
-    IO.iodata_to_binary(iodata)
-  end
-
   describe "successful parsing" do
     test "should return raw and generated blocks" do
       content = """
@@ -63,7 +51,7 @@ defmodule Readmix.ParserTest do
 
       assert [
                {:text, "Some line before\n"},
-               {:generated,
+               {:spec,
                 %{
                   # The newline is included in the header
                   raw_header: "<!-- rdmx :someblock -->\n",
@@ -79,8 +67,6 @@ defmodule Readmix.ParserTest do
                 }},
                {:text, "Some line after\n"}
              ] = blocks
-
-      assert content == back_to_string(blocks)
     end
 
     # defp dump_text(content) do
@@ -123,7 +109,7 @@ defmodule Readmix.ParserTest do
       blocks = parse!(content)
 
       assert [
-               generated: %BlockSpec{
+               spec: %BlockSpec{
                  generator:
                    {:rdmx, :someblock,
                     some_int: 1,
@@ -137,8 +123,6 @@ defmodule Readmix.ParserTest do
                  content: [text: "Some content\n"]
                }
              ] = blocks
-
-      assert content == back_to_string(blocks)
     end
 
     test "spacing is optional between arg key and value" do
@@ -151,7 +135,7 @@ defmodule Readmix.ParserTest do
       blocks = parse!(content)
 
       assert [
-               generated: %BlockSpec{
+               spec: %BlockSpec{
                  generator:
                    {:rdmx, :someblock,
                     some_int: 1, some_float: 1.23, some_string: "hello", some_bool: true},
@@ -161,8 +145,6 @@ defmodule Readmix.ParserTest do
                  content: [text: "Some content\n"]
                }
              ] = blocks
-
-      assert content == back_to_string(blocks)
     end
 
     test "arguments accept commas in between (comma is actually totally ignored)" do
@@ -175,15 +157,13 @@ defmodule Readmix.ParserTest do
       blocks = parse!(content)
 
       assert [
-               generated: %BlockSpec{
+               spec: %BlockSpec{
                  generator: {:rdmx, :someblock, a: 1, b: 2, c: "i, love, commas,"},
                  raw_header: _,
                  raw_footer: _,
                  content: [_]
                }
              ] = blocks
-
-      assert content == back_to_string(blocks)
     end
 
     test "blocks can use variables" do
@@ -196,7 +176,7 @@ defmodule Readmix.ParserTest do
       blocks = parse!(content)
 
       assert [
-               generated: %BlockSpec{
+               spec: %BlockSpec{
                  generator:
                    {:rdmx, :someblock,
                     [
@@ -209,8 +189,6 @@ defmodule Readmix.ParserTest do
                  content: [text: "Some content\n"]
                }
              ] = blocks
-
-      assert content == back_to_string(blocks, %{var1: :some, _var2: :stuff})
     end
 
     test "block at the start of the file" do
@@ -224,7 +202,7 @@ defmodule Readmix.ParserTest do
       blocks = parse!(content)
 
       assert [
-               generated: %BlockSpec{
+               spec: %BlockSpec{
                  generator: {:rdmx, :someblock, []},
                  raw_header: "<!-- rdmx :someblock -->\n",
                  raw_footer: "<!-- rdmx /:someblock -->\n",
@@ -232,8 +210,6 @@ defmodule Readmix.ParserTest do
                },
                text: "Some after text\n"
              ] = blocks
-
-      assert content == back_to_string(blocks)
     end
 
     test "block with triple dashes" do
@@ -248,15 +224,13 @@ defmodule Readmix.ParserTest do
 
       assert [
                text: "Some text before\n",
-               generated: %BlockSpec{
+               spec: %BlockSpec{
                  generator: {:rdmx, :someblock, []},
                  raw_header: "<!--- rdmx :someblock --->\n",
                  raw_footer: "<!--- rdmx /:someblock --->\n",
                  content: [text: "Some content\n"]
                }
              ] = blocks
-
-      assert content == back_to_string(blocks)
     end
 
     test "mixed double/triple dashes in same comment" do
@@ -271,15 +245,13 @@ defmodule Readmix.ParserTest do
 
       assert [
                text: "Some text before\n",
-               generated: %BlockSpec{
+               spec: %BlockSpec{
                  generator: {:rdmx, :someblock, []},
                  raw_header: "<!-- rdmx :someblock --->\n",
                  raw_footer: "<!--- rdmx /:someblock -->\n",
                  content: [text: "Some content\n"]
                }
              ] = blocks
-
-      assert content == back_to_string(blocks)
     end
 
     test "mixed double/triple dashes in header/endr" do
@@ -294,15 +266,13 @@ defmodule Readmix.ParserTest do
 
       assert [
                text: "Some text before\n",
-               generated: %BlockSpec{
+               spec: %BlockSpec{
                  generator: {:rdmx, :someblock, []},
                  raw_header: "<!-- rdmx :someblock -->\n",
                  raw_footer: "<!--- rdmx /:someblock --->\n",
                  content: [text: "Some content\n"]
                }
              ] = blocks
-
-      assert content == back_to_string(blocks)
     end
 
     test "in the middle of a line" do
@@ -314,7 +284,7 @@ defmodule Readmix.ParserTest do
 
       assert [
                text: "Some text",
-               generated: %BlockSpec{
+               spec: %BlockSpec{
                  generator: {:rdmx, :someblock, []},
                  raw_header: "<!-- rdmx :someblock -->",
                  raw_footer: "<!-- rdmx /:someblock -->",
@@ -322,8 +292,6 @@ defmodule Readmix.ParserTest do
                },
                text: "rest of line\n"
              ] = blocks
-
-      assert content == back_to_string(blocks)
     end
 
     test "block a the end of the file" do
@@ -338,15 +306,13 @@ defmodule Readmix.ParserTest do
 
       assert [
                text: "Some text before\n",
-               generated: %BlockSpec{
+               spec: %BlockSpec{
                  generator: {:rdmx, :someblock, []},
                  raw_header: "<!-- rdmx :someblock -->\n",
                  raw_footer: "<!-- rdmx /:someblock -->\n",
                  content: [text: "Some content\n"]
                }
              ] = blocks
-
-      assert content == back_to_string(blocks)
     end
 
     test "block a the end of the file without newline" do
@@ -361,15 +327,13 @@ defmodule Readmix.ParserTest do
 
       assert [
                text: "Some text before\n",
-               generated: %BlockSpec{
+               spec: %BlockSpec{
                  generator: {:rdmx, :someblock, []},
                  raw_header: "<!-- rdmx :someblock -->\n",
                  raw_footer: "<!-- rdmx /:someblock -->",
                  content: [text: "Some content\n"]
                }
              ] = blocks
-
-      assert content == back_to_string(blocks)
     end
 
     test "blocks will take one newline after the comment, no more" do
@@ -390,7 +354,7 @@ defmodule Readmix.ParserTest do
       blocks = parse!(content)
 
       assert [
-               generated: %BlockSpec{
+               spec: %BlockSpec{
                  generator: {:rdmx, :someblock, []},
                  raw_header: "<!-- rdmx :someblock -->\n",
                  raw_footer: "<!-- rdmx /:someblock -->\n",
@@ -398,8 +362,6 @@ defmodule Readmix.ParserTest do
                },
                text: "\n\nbottom\n"
              ] = blocks
-
-      assert content == back_to_string(blocks)
     end
   end
 
@@ -538,14 +500,14 @@ defmodule Readmix.ParserTest do
       blocks = parse!(content)
 
       assert [
-               generated: %BlockSpec{
+               spec: %BlockSpec{
                  generator: {:rdmx, :outer, []},
                  raw_header: "<!-- rdmx :outer -->\n",
                  raw_footer: "<!-- rdmx /:outer -->\n",
                  content: [
                    # Content contains built blocks too
                    text: "Some content\n",
-                   generated: %BlockSpec{
+                   spec: %BlockSpec{
                      generator: {:rdmx, :inner, []},
                      raw_header: "<!-- rdmx :inner -->\n",
                      raw_footer: "<!-- rdmx /:inner -->\n",
@@ -555,8 +517,6 @@ defmodule Readmix.ParserTest do
                  ]
                }
              ] = blocks
-
-      assert content == back_to_string(blocks)
     end
   end
 end

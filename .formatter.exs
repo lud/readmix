@@ -1,5 +1,5 @@
 # Used by "mix format"
 [
   inputs: ["{mix,.formatter}.exs", "{config,lib,test}/**/*.{ex,exs}"],
-  locals_without_parens: [dispatch_actions: 1, action: 2]
+  locals_without_parens: [action: 2]
 ]

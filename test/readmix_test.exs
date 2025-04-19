@@ -1,6 +1,8 @@
 defmodule ReadmixTest do
+  alias Readmix.Context
   import Mox
   import Readmix.TestHelpers
+  require Readmix.Records
   use ExUnit.Case
 
   doctest Readmix
@@ -90,24 +92,63 @@ defmodule ReadmixTest do
 
     test "passes a context to the generator" do
       input = """
-      Before
-      <!-- rdmx g:sometf a:1 b:2 -->
-      Old Inside
+      --before--
+
+      <!-- rdmx g:sometf pos:1 some:foo -->
+      Text One
       <!-- rdmx /g:sometf -->
-      After
+
+      --between--
+
+      <!-- rdmx g:sometf pos:2 some:bar -->
+      Text Two
+      <!-- rdmx /g:sometf -->
+
+      --after--
       """
 
       mod =
         gen_mock()
         |> stub_actions([:sometf])
-        |> expect(:generate, fn :sometf, [a: 1, b: 2], context ->
-          assert %{
+        |> expect(:generate, fn :sometf, [pos: 1, some: "foo"], context ->
+          assert %Context{
+                   siblings:
+                     {[{:text, "--before--\n\n"}],
+                      [
+                        {:text, "\n--between--\n\n" <> _},
+                        Readmix.Records.generated(
+                          action: :sometf,
+                          spec: %{generator: {_, _, [pos: 2, some: "bar"]}}
+                        ),
+                        {:text, "\n--after--\n"}
+                      ]},
                    previous_content: previous_content,
                    readmix: rdmx
                  } = context
 
           assert {:ok, iodata} = Readmix.blocks_to_iodata(rdmx, previous_content)
-          assert "Old Inside\n" == IO.iodata_to_binary(iodata)
+          assert "Text One\n" == IO.iodata_to_binary(iodata)
+
+          {:ok, []}
+        end)
+        # Previous blocks are reversed
+        |> expect(:generate, fn :sometf, [pos: 2, some: "bar"], context ->
+          assert %Context{
+                   siblings:
+                     {[
+                        {:text, "\n--between--\n\n"},
+                        Readmix.Records.generated(
+                          action: :sometf,
+                          spec: %{generator: {_, _, [pos: 1, some: "foo"]}}
+                        ),
+                        {:text, "--before--\n\n"}
+                      ], [{:text, "\n--after--\n"}]},
+                   previous_content: previous_content,
+                   readmix: rdmx
+                 } = context
+
+          assert {:ok, iodata} = Readmix.blocks_to_iodata(rdmx, previous_content)
+          assert "Text Two\n" == IO.iodata_to_binary(iodata)
 
           {:ok, []}
         end)

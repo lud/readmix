@@ -6,12 +6,6 @@ defmodule Readmix.Error do
   @enforce_keys [:kind, :loc, :file, :arg]
   defexception @enforce_keys
 
-  def message(%{kind: :generator_error} = e) do
-    {mod, action, params, reason} = e.arg
-
-    "generator error in #{file_loc(e)}, (#{inspect(mod)}, #{inspect(action)}, #{inspect(params)}), got: #{inspect(reason)}"
-  end
-
   def message(%{kind: :unresolved_generator} = e) do
     "unknown generator namespace error in #{file_loc(e)}, no module registered for #{inspect(e.arg)}"
   end
@@ -47,6 +41,15 @@ defmodule Readmix.Error do
 
     "invalid params for #{ns}:#{action} in #{file_loc(e)} for module #{inspect(mod)}, #{nimble_message}"
   end
+
+  def message(%{kind: :generator_error} = e) do
+    {mod, action, params, reason} = e.arg
+
+    "generator error in #{file_loc(e)}, (#{inspect(mod)}, #{inspect(action)}, #{inspect(params)}), got: #{format_reason(reason)}"
+  end
+
+  defp format_reason(%{__exception__: true} = e), do: Exception.message(e)
+  defp format_reason(reason), do: inspect(reason)
 
   defp file_loc(e) do
     {line, col} = e.loc

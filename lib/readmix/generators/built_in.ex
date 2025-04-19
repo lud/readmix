@@ -1,4 +1,8 @@
 defmodule Readmix.Generators.BuiltIn do
+  alias Readmix.Generators.BuiltIn.AppDep
+  alias Readmix.Generators.BuiltIn.Badges
+  alias Readmix.Generators.BuiltIn.Eval
+  alias Readmix.Generators.BuiltIn.Section
   use Readmix.Generator
 
   @doc """
@@ -76,10 +80,11 @@ defmodule Readmix.Generators.BuiltIn do
     ]
 
   @doc """
-  Defines a named section for extraction with `Readmix.Docs.extract_section/2`.
+  Defines a named block that other generator actions can retrieve during
+  generation.
 
-  The section itself doesn't transform content but allows nested blocks
-  to be processed.
+  The section itself doesn't transform content but allows nested blocks to be
+  processed.
 
   Note that uniqueness of names is not enforced.
   """
@@ -89,7 +94,41 @@ defmodule Readmix.Generators.BuiltIn do
       name: [
         type: :string,
         required: true,
-        doc: "The name of the section"
+        doc: "The name of the section."
+      ]
+    ]
+
+  @doc """
+  Evaluates a fenced code block from the last section with the given name at the
+  same nesting level and outputs the result of the evaluation in a fenced code
+  block.
+
+  ### Example
+
+  ~~~markdown
+  <!-- rdmx :section name:example -->
+  ```elixir
+  map = %{hello: "World"}
+  Map.fetch!(map, :hello)
+  ```
+  <!-- rdmx /:section -->
+
+  <!-- rdmx :eval section:example -->
+  ```elixir
+  "World"
+  ```
+  <!-- rdmx /:eval -->
+  ~~~
+
+  """
+  action :eval,
+    as: :eval_section,
+    params: [
+      section: [type: :string, required: true, doc: "The name of the section to evaluate."],
+      catch: [
+        type: :boolean,
+        default: false,
+        doc: "Allow errors and display exception banners as output in case of error."
       ]
     ]
 
@@ -99,157 +138,15 @@ defmodule Readmix.Generators.BuiltIn do
   #{Readmix.Docs.generate()}
   """
 
-  defp generate_app_dep(params, context) do
-    otp_app = app_dep_otp_app(params, context)
-    vsn = app_dep_vsn(params, otp_app)
-    only = app_dep_only(params)
-    runtime = app_dep_runtime(params)
+  @doc false
+  defdelegate generate_app_dep(params, context), to: AppDep
 
-    elems =
-      [inspect(otp_app), vsn, only, runtime]
-      |> Enum.reject(&is_nil/1)
-      |> Enum.intersperse(", ")
+  @doc false
+  defdelegate generate_badges(params, context), to: Badges
 
-    comma = if params[:comma] == false, do: "", else: ","
+  @doc false
+  defdelegate generate_section(params, context), to: Section
 
-    snippet =
-      """
-      ```elixir
-      def deps do
-        [
-          {#{elems}}#{comma}
-        ]
-      end
-      ```
-      """
-
-    {:ok, snippet}
-  end
-
-  defp app_dep_otp_app(params, context) do
-    case get_arg(params, :otp_app, or_var(context, :otp_app)) do
-      app when is_atom(app) -> app
-      app when is_binary(app) -> String.to_existing_atom(app)
-    end
-  end
-
-  defp app_dep_vsn(params, otp_app) do
-    vsn =
-      get_arg(params, :vsn, fn ->
-        otp_app
-        |> Application.spec()
-        |> Keyword.fetch!(:vsn)
-        |> List.to_string()
-      end)
-
-    [?", "~> ", if(params[:patch], do: vsn, else: remove_vsn_patch(vsn)), ?"]
-  end
-
-  defp remove_vsn_patch(vsn) do
-    vsn
-    |> Version.parse!()
-    |> Map.put(:patch, 9_999_999)
-    |> Version.to_string()
-    |> String.replace(~r/\.9999999.*/, "")
-  end
-
-  defp app_dep_only(params) do
-    case params[:only] do
-      nil ->
-        nil
-
-      "" ->
-        nil
-
-      envs ->
-        atoms = envs |> String.split(",") |> Enum.map_intersperse(", ", &[?:, String.trim(&1)])
-        ["only: [", atoms, "]"]
-    end
-  end
-
-  defp app_dep_runtime(params) do
-    case params[:runtime] do
-      false -> ["runtime: false"]
-      _ -> nil
-    end
-  end
-
-  defp generate_badges(params, _context) do
-    badges =
-      Enum.flat_map(params, fn
-        {k, v} when k in [:hexpm, :github_action, :license] -> [gen_badge(k, v)]
-        _ -> []
-      end)
-
-    {:ok, Enum.map(badges, &[&1, ?\n])}
-  end
-
-  # accepts package, package with ?<query_string>, and "|Image al" suffix
-  defp gen_badge(:hexpm, arg) do
-    {path, img_alt} = split_badge_img_alt(arg, "hex.pm Version")
-
-    img_url =
-      "https://img.shields.io/hexpm/v/"
-      |> URI.parse()
-      |> URI.merge(path)
-      |> URI.to_string()
-
-    package_url =
-      "https://hex.pm/packages/"
-      |> URI.parse()
-      |> URI.merge(path)
-      |> Map.merge(%{query: nil, fragment: nil})
-      |> URI.to_string()
-
-    markdown_badge(img_alt, img_url, package_url)
-  end
-
-  defp gen_badge(:github_action, arg) do
-    {arg, img_alt} = split_badge_img_alt(arg, "Build Status")
-
-    # TODO validate format
-    [owner, repo, workflow] = String.split(arg, "/", parts: 3)
-
-    img_url =
-      "https://img.shields.io/github/actions/workflow/status/#{owner}/#{repo}/#{workflow}"
-
-    workflow_query =
-      with %{query: query} when is_binary(query) <- URI.parse(img_url),
-           %{"branch" => branch} when branch != "" <- URI.decode_query(query) do
-        URI.encode_query(query: "branch:#{branch}")
-      else
-        _ -> nil
-      end
-
-    workflow_url =
-      "https://github.com/#{owner}/#{repo}/actions/workflows/#{workflow}"
-      |> URI.parse()
-      |> Map.merge(%{query: workflow_query, fragment: nil})
-      |> URI.to_string()
-
-    markdown_badge(img_alt, img_url, workflow_url)
-  end
-
-  defp gen_badge(:license, arg) do
-    {hexpm_package, img_alt} = split_badge_img_alt(arg, "License")
-    img_url = "https://img.shields.io/hexpm/l/#{hexpm_package}.svg"
-    package_link = "https://hex.pm/packages/#{hexpm_package}"
-    markdown_badge(img_alt, img_url, package_link)
-  end
-
-  defp split_badge_img_alt(arg, default_alt) do
-    case String.split(arg, "|", parts: 2) do
-      [single] -> {single, default_alt}
-      [value, label] -> {value, label}
-    end
-  end
-
-  defp markdown_badge(img_alt, img_url, link_url) do
-    "[![#{img_alt}](#{img_url})](#{link_url})"
-  end
-
-  defp generate_section(_params, context) do
-    %{previous_content: prev, readmix: rdmx} = context
-    Readmix.blocks_to_iodata(rdmx, prev)
-  end
+  @doc false
+  defdelegate eval_section(params, context), to: Eval
 end

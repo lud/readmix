@@ -225,8 +225,8 @@ defmodule Readmix.Generators.BuiltInTest do
     end
 
     test "does not accept extra arguments" do
-      # This is to ensure that we can mach on the keyword list in the
-      # extract_section feature.
+      # This is to ensure that we can mach on the keyword list when
+      # preprocessing the blocks.
       input = """
       <!-- rdmx rdmx:section name:stuff other:123 -->
       Some content
@@ -280,6 +280,205 @@ defmodule Readmix.Generators.BuiltInTest do
       expected = input
 
       assert expected == transform_string!(test_new(), input)
+    end
+  end
+
+  describe "eval" do
+    test "evaluates code from a section" do
+      input = ~S"""
+      <!-- rdmx rdmx:section name:my_code -->
+      ```elixir
+      a = 1 + 1
+      "result: #{a}"
+      ```
+      <!-- rdmx /rdmx:section -->
+
+      <!-- rdmx rdmx:eval section:my_code -->
+      <!-- rdmx /rdmx:eval -->
+      """
+
+      expected = ~S"""
+      <!-- rdmx rdmx:section name:my_code -->
+      ```elixir
+      a = 1 + 1
+      "result: #{a}"
+      ```
+      <!-- rdmx /rdmx:section -->
+
+      <!-- rdmx rdmx:eval section:my_code -->
+      ```elixir
+      "result: 2"
+      ```
+      <!-- rdmx /rdmx:eval -->
+      """
+
+      assert expected == transform_string!(input)
+    end
+
+    test "accepts code blocks without language tag" do
+      input = ~S"""
+      <!-- rdmx rdmx:section name:my_code -->
+      ```
+      "Hello #{String.upcase("world")}"
+      ```
+      <!-- rdmx /rdmx:section -->
+
+      <!-- rdmx rdmx:eval section:my_code -->
+      <!-- rdmx /rdmx:eval -->
+      """
+
+      expected = ~S"""
+      <!-- rdmx rdmx:section name:my_code -->
+      ```
+      "Hello #{String.upcase("world")}"
+      ```
+      <!-- rdmx /rdmx:section -->
+
+      <!-- rdmx rdmx:eval section:my_code -->
+      ```elixir
+      "Hello WORLD"
+      ```
+      <!-- rdmx /rdmx:eval -->
+      """
+
+      assert expected == transform_string!(input)
+    end
+
+    test "displays exceptions errors" do
+      input = ~S"""
+      <!-- rdmx rdmx:section name:my_code -->
+      ```elixir
+      List.first(%{})
+      ```
+      <!-- rdmx /rdmx:section -->
+
+      <!-- rdmx rdmx:eval section:my_code catch:true -->
+      <!-- rdmx /rdmx:eval -->
+      """
+
+      expected = ~S"""
+      <!-- rdmx rdmx:section name:my_code -->
+      ```elixir
+      List.first(%{})
+      ```
+      <!-- rdmx /rdmx:section -->
+
+      <!-- rdmx rdmx:eval section:my_code catch:true -->
+      ```
+      ** (FunctionClauseError) no function clause matching in List.first/2
+      ```
+      <!-- rdmx /rdmx:eval -->
+      """
+
+      assert expected == transform_string!(input)
+    end
+
+    test "displays throws" do
+      input = ~S"""
+      <!-- rdmx rdmx:section name:my_code -->
+      ```elixir
+      throw {:some, "value"}
+      ```
+      <!-- rdmx /rdmx:section -->
+
+      <!-- rdmx rdmx:eval section:my_code catch:true -->
+      <!-- rdmx /rdmx:eval -->
+      """
+
+      expected = ~S"""
+      <!-- rdmx rdmx:section name:my_code -->
+      ```elixir
+      throw {:some, "value"}
+      ```
+      <!-- rdmx /rdmx:section -->
+
+      <!-- rdmx rdmx:eval section:my_code catch:true -->
+      ```
+      ** (throw) {:some, "value"}
+      ```
+      <!-- rdmx /rdmx:eval -->
+      """
+
+      assert expected == transform_string!(input)
+    end
+
+    test "fails on syntax errors" do
+      # the catch:true argument should have no impact here
+      #
+      # parse error shoud be on line 5
+      input = ~S"""
+      <!-- rdmx rdmx:section name:my_code -->
+      ```elixir
+
+
+      {a, b,]
+
+
+
+      ```
+      <!-- rdmx /rdmx:section -->
+
+      <!-- rdmx rdmx:eval section:my_code catch:true -->
+      <!-- rdmx /rdmx:eval -->
+      """
+
+      assert {:error, %Readmix.Error{} = e} =
+               Readmix.transform_string(test_new(), input, source_path: "testfile.txt")
+
+      message = Exception.message(e)
+
+      assert message =~ "testfile.txt:5"
+    end
+
+    test "wraps non-string results in inspect" do
+      input = ~S"""
+      <!-- rdmx rdmx:section name:my_code -->
+      ```elixir
+      %{a: 1, b: 2}
+      ```
+      <!-- rdmx /rdmx:section -->
+
+      <!-- rdmx rdmx:eval section:my_code -->
+      <!-- rdmx /rdmx:eval -->
+      """
+
+      expected = ~S"""
+      <!-- rdmx rdmx:section name:my_code -->
+      ```elixir
+      %{a: 1, b: 2}
+      ```
+      <!-- rdmx /rdmx:section -->
+
+      <!-- rdmx rdmx:eval section:my_code -->
+      ```elixir
+      %{a: 1, b: 2}
+      ```
+      <!-- rdmx /rdmx:eval -->
+      """
+
+      assert expected == transform_string!(input)
+    end
+
+    test "requires referenced section to exist" do
+      input = ~S"""
+      <!-- rdmx rdmx:eval section:missing_section -->
+      <!-- rdmx /rdmx:eval -->
+      """
+
+      assert {:error, %Readmix.Error{}} = Readmix.transform_string(test_new(), input)
+    end
+
+    test "requires referenced section to contain a code block" do
+      input = ~S"""
+      <!-- rdmx rdmx:section name:my_section -->
+      Not a code block
+      <!-- rdmx /rdmx:section -->
+
+      <!-- rdmx rdmx:eval section:my_section -->
+      <!-- rdmx /rdmx:eval -->
+      """
+
+      assert {:error, %Readmix.Error{}} = Readmix.transform_string(test_new(), input)
     end
   end
 end

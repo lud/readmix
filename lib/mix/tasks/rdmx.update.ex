@@ -38,7 +38,7 @@ defmodule Mix.Tasks.Rdmx.Update do
         keep: true,
         doc: """
         Provide variables for generators using the
-        `Readmix.Contexts.Defaults` context.
+        `Readmix.Scopes.Defaults` scope.
 
         Variables must be given with a key and value:
 
@@ -54,16 +54,16 @@ defmodule Mix.Tasks.Rdmx.Update do
   A backup of updated files is automatically done in the system temporary
   directory.
 
-  Readmix will use the default generators and context defined in the
+  Readmix will use the default generators and scopes defined in the
   configuration for the `:readmix` application, under the `:generators` and
-  `:contexts` keys:
+  `:scopes` keys:
 
   ```elixir
   # dev.exs
 
   config :readmix,
     generators: [MyGenerator],
-    contexts: [MyContext, Readmix.Contexts.Defaults]
+    scopes: [MyScope, Readmix.Scopes.Defaults]
   ```
 
   #{CliMate.CLI.format_usage(@command, format: :moduledoc)}
@@ -90,10 +90,6 @@ defmodule Mix.Tasks.Rdmx.Update do
     %{options: options, arguments: arguments} = CLI.parse_or_halt!(argv, @command)
 
     file = arguments.path
-
-    # Options to load from the CLI and/or environment
-    # * context modules
-    # * variables
 
     variables =
       Map.new(options.var, fn var ->

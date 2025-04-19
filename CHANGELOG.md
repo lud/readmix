@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [unreleased]
+
+### ⚙️ Miscellaneous Tasks
+
+- Update Elixir Github workflow (#4)
+
 ## [0.3.0] - 2025-03-28
 
 ### 🚀 Features

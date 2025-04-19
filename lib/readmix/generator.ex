@@ -1,4 +1,7 @@
 defmodule Readmix.Generator do
+  alias Readmix.BlockSpec
+  alias Readmix.Context
+
   @moduledoc """
   Defines the behavior and utilities for Readmix generators.
 
@@ -66,15 +69,12 @@ defmodule Readmix.Generator do
   ```
   """
 
-  alias Readmix.BlockSpec
-  alias Readmix.Context
-
   @type block_name :: atom
   @type params :: %{optional(binary) => integer | float | binary}
   @type block :: {:text, iodata} | {:generated, block_spec}
 
   @type block_spec :: BlockSpec.t()
-  @type context :: %{:previous_content => [block], readmix: Readmix.t()}
+  @type context :: %Context{:previous_content => [block], readmix: Readmix.t()}
   @type action_name :: atom
   @type action_spec_opt ::
           {:as, function_name :: atom} | {:params, NimbleOptions.schema()} | {:doc, String.t()}
@@ -87,8 +87,9 @@ defmodule Readmix.Generator do
     quote do
       Module.register_attribute(__MODULE__, :rdmx_action, accumulate: true)
 
-      import unquote(__MODULE__)
       require Readmix.Docs
+
+      import unquote(__MODULE__), only: [action: 2]
 
       @before_compile unquote(__MODULE__)
       @behaviour unquote(__MODULE__)
@@ -142,49 +143,6 @@ defmodule Readmix.Generator do
       exported = Enum.map(actions, fn {action, {spec, _}} -> {action, spec} end)
       @impl true
       def actions, do: unquote(exported)
-    end
-  end
-
-  defmacro dispatch_actions(actions) do
-    quote bind_quoted: binding() do
-      true = Enum.all?(actions, &is_atom/1)
-      raise "TODO"
-      @impl true
-      def generate(action, params, context)
-
-      Enum.each(actions, fn action ->
-        def generate(unquote(action), params, context) do
-          unquote(:"generate_#{action}")(params, context)
-        end
-      end)
-
-      def generate(other, _, _), do: {:error, {:unknown_action, other}}
-    end
-  end
-
-  def get_arg(params, key, default_or_fun) when is_function(default_or_fun, 0) do
-    Keyword.get_lazy(params, key, default_or_fun)
-  end
-
-  @doc """
-  Returns a function that reads the given key from the given context.
-
-
-  The returned function with throw `{:undef_var, key}` if the variable is not
-  defined.
-
-  This is intended to be used as a default getter for `get_arg`, so there is an
-  attempt to read a variable only when the argument is not defined.
-  """
-  def or_var(%Context{} = ctx, key) do
-    fn -> expect_variable(ctx.readmix.vars, key) end
-  end
-
-  @doc false
-  def expect_variable(map, key) do
-    case Map.fetch(map, key) do
-      {:ok, value} -> value
-      :error -> throw({:undef_var, key})
     end
   end
 end

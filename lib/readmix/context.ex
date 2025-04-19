@@ -1,34 +1,44 @@
 defmodule Readmix.Context do
+  import Readmix.Records
+
   @moduledoc """
-  Defines the context behaviour for Readmix contexts.
-
-  A context is used to define variables used in Readmix blocks, such as:
-
-  ```markdown
-  <!-- rdmx :app_dep vsn:$my_custom_variable -->
-  some content
-  <!-- rdmx /:app_dep -->
-  ```
-
-  To define `$my_custom_variable`, a context module could be defined like so:
-
-  ```elixir
-  defmodule MyContext do
-    @behaviour Readmix.Context
-
-    @impl true
-    def get_vars do
-      %{my_custom_variable: "1.2.3"}
-    end
-  end
-  ```
-
-  Context can be provided with the `:contexts` options for `Readmix.new/1`.
+  Helpers to access the context in generator actions.
   """
 
-  defstruct previous_content: [], readmix: nil
+  defstruct previous_content: [], readmix: nil, siblings: {[], []}
 
-  @type vars :: %{optional(atom) => term}
+  @doc """
+  Returns a function that reads the given var from the given context.
 
-  @callback get_vars :: vars
+  The returned function with throw `{:undef_var, key}` if the variable is not
+  defined.
+  """
+  def getter(%__MODULE__{} = context, key) do
+    fn -> expect_variable(context.readmix.vars, key) end
+  end
+
+  @doc false
+  def expect_variable(map, key) do
+    case Map.fetch(map, key) do
+      {:ok, value} -> value
+      :error -> throw({:undef_var, key})
+    end
+  end
+
+  @doc """
+  Returns a section from the current rendering context at the same nesting
+  level.
+
+  This function can only retrieve sections that are defined above the calling
+  generated block. If multiple sections share the same name, it will return the
+  closest section, _.i.e_ the last one in file order.
+  """
+  def lookup_rendered_section(%__MODULE__{} = context, section_name) do
+    {previous, _} = context.siblings
+
+    case List.keyfind(previous, section_name, generated(:section_name)) do
+      generated(rendered: {_, _, _}) = section -> {:ok, section}
+      nil -> {:error, {:section_not_found, section_name}}
+    end
+  end
 end

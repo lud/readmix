@@ -1,7 +1,9 @@
 defmodule Readmix do
   alias Readmix.BlockSpec
   alias Readmix.Context
-  alias Readmix.Contexts.Defaults
+  alias Readmix.Generators.BuiltIn
+  alias Readmix.Scopes.Defaults
+  import Readmix.Records
 
   @moduledoc """
   Readmix is a tool for generating and maintaining documentation with dynamic
@@ -32,19 +34,29 @@ defmodule Readmix do
 
   ## Configuration
 
-  You can configure Readmix with custom generators, variables, and context
+  You can configure Readmix with custom generators, variables, and scope
   modules:
 
   ```elixir
   Readmix.new(
     generators: %{my_namespace: MyGeneratorModule},
     vars: %{my_var: "hello"},
-    contexts: [MyContext | Readmix.default_contexts()]
+    env: [MyScope | Readmix.default_scopes()]
   )
   ```
   """
 
   defstruct [:resolver, :vars, :backup_fun]
+
+  @type block ::
+          record(:generated,
+            mod: module,
+            action: atom,
+            params: [term],
+            section_name: String.t() | nil,
+            spec: BlockSpec.t()
+          )
+          | {:text, binary}
 
   @type t :: %__MODULE__{
           resolver: function(),
@@ -118,21 +130,20 @@ defmodule Readmix do
         other -> raise "invalid option :vars, expected a map, got: #{inspect(other)}"
       end
 
-    # Unlike generators, the default contexts are not pulled if the
-    # configuration is set.
+    # Unlike generators, the default scopes are not pulled if the configuration
+    # is set.
     #
-    # config_contexts() returns default_contexts() if the configuration is not
-    # set.
-    contexts =
-      case opts[:contexts] do
-        nil -> Readmix.config_contexts()
+    # config_scopes() returns default_scopes() if the configuration is not set.
+    scopes =
+      case opts[:scopes] do
+        nil -> Readmix.config_scopes()
         list when is_list(list) -> list
       end
 
     # Modules defined first in the list have precedence, subsequent modules do
     # not overwrite their vars. The external vars have precedence over all
     # modules.
-    Enum.reduce(contexts, external_vars, fn mod, acc ->
+    Enum.reduce(scopes, external_vars, fn mod, acc ->
       case mod.get_vars() do
         map when is_map(map) ->
           Map.merge(mod.get_vars(), acc)
@@ -217,24 +228,24 @@ defmodule Readmix do
   end
 
   @doc """
-  Returns the default contexts used for built-in generators.
+  Returns the default scopes used for built-in generators.
 
-  If you need to configure your own contexts but want to use Readmix generators
-  as well, include those contexts in the configuration:
+  If you need to configure your own scopes but want to use default Readmix
+  scopes as well, include these in the configuration:
 
       # config/dev.exs
       import Config
 
       config :readmix,
-        contexts: [MyContext1, MyContext2 | Readmix.default_contexts()]
+        scopes: [MyScope1, MyScope2 | Readmix.default_scopes()]
   """
-  def default_contexts do
-    [Readmix.Contexts.Defaults]
+  def default_scopes do
+    [Readmix.Scopes.Defaults]
   end
 
   @doc false
-  def config_contexts do
-    Application.get_env(:readmix, :contexts, default_contexts())
+  def config_scopes do
+    Application.get_env(:readmix, :scopes, default_scopes())
   end
 
   def update_file(rdmx, path) do
@@ -269,7 +280,8 @@ defmodule Readmix do
   def transform_string_to_iodata(rdmx, string, opts \\ [])
 
   def transform_string_to_iodata(rdmx, string, opts) when is_binary(string) do
-    with {:ok, blocks} <- parse_string(string, opts[:source_path]) do
+    with {:ok, parsed} <- parse_string(string, opts[:source_path]),
+         {:ok, blocks} <- preprocess_blocks(rdmx, parsed) do
       blocks_to_iodata(rdmx, blocks)
     end
   end
@@ -284,11 +296,11 @@ defmodule Readmix do
     Readmix.Parser.parse_string(string, source_path)
   end
 
-  def blocks_to_iodata(rdmx, blocks) do
+  defp preprocess_blocks(rdmx, blocks) do
     result =
       Enum.reduce_while(blocks, {:ok, []}, fn block, {:ok, acc} ->
-        case block_to_iodata(rdmx, block) do
-          {:ok, new_block} -> {:cont, {:ok, [new_block | acc]}}
+        case preprocess_block(rdmx, block) do
+          {:ok, record} -> {:cont, {:ok, [record | acc]}}
           {:error, _} = err -> {:halt, err}
         end
       end)
@@ -299,27 +311,28 @@ defmodule Readmix do
     end
   end
 
-  defp block_to_iodata(_rdmx, {:text, iodata}), do: {:ok, iodata}
+  defp preprocess_block(_rdmx, {:text, content}), do: {:ok, {:text, content}}
 
-  defp block_to_iodata(rdmx, {:generated, block}) do
-    %{
+  defp preprocess_block(rdmx, {:spec, block_spec}) do
+    %BlockSpec{
       generator: {ns, action, params},
-      raw_header: raw_header,
-      raw_footer: raw_footer,
-      content: sub_blocks
-    } = block
+      content: sub_parsed
+    } = block_spec
 
-    # We do not use the :as param of an action. This is for the macro. We will
-    # always call the generate/3 callback.
-    try do
-      with {:ok, {mod, params}} <- resolve_call(rdmx, ns, action, params),
-           {:ok, iodata} <- call_transformer(rdmx, mod, action, params, sub_blocks) do
-        {:ok, [raw_header, iodata, raw_footer]}
-      else
-        {:error, reason} -> {:error, convert_error(reason, block)}
-      end
-    catch
-      :throw, {:undef_var, _} = e -> {:error, convert_error(e, block)}
+    with {:ok, sub_blocks} <- preprocess_blocks(rdmx, sub_parsed),
+         {:ok, {mod, params}} <- resolve_call(rdmx, ns, action, params) do
+      {:ok,
+       generated(
+         mod: mod,
+         action: action,
+         params: params,
+         section_name: section_name(mod, action, params),
+         spec: block_spec,
+         sub_blocks: sub_blocks
+       )}
+    else
+      {:error, reason} ->
+        {:error, convert_error(reason, block_spec)}
     end
   end
 
@@ -348,11 +361,8 @@ defmodule Readmix do
 
   defp resolve_fun(actions, action, errctx) do
     case Map.fetch(actions, action) do
-      {:ok, %NimbleOptions{}} = found ->
-        found
-
-      :error ->
-        {:error, {:unknown_action, {action, errctx}}}
+      {:ok, %NimbleOptions{}} = found -> found
+      :error -> {:error, {:unknown_action, {action, errctx}}}
     end
   end
 
@@ -361,11 +371,13 @@ defmodule Readmix do
 
     swapped =
       Enum.map(params, fn
-        {k, {:var, var}} -> {k, Readmix.Generator.expect_variable(vars, var)}
+        {k, {:var, var}} -> {k, Readmix.Context.expect_variable(vars, var)}
         {k, v} -> {k, v}
       end)
 
     {:ok, swapped}
+  catch
+    :throw, {:undef_var, _} = e -> {:error, e}
   end
 
   defp validate_params(params, params_schema, errctx) do
@@ -378,12 +390,61 @@ defmodule Readmix do
     end
   end
 
-  # {:ok, mod} -> {:ok, mod}
-  # :error when ns == :rdmx -> {:ok, Readmix.Generators.BuiltIn}
-  # :error -> {:error, {:unresolved_generator, ns}}
-  # other -> raise "invalid resolver return value: #{inspect(other)}"
-  defp call_transformer(rdmx, mod, action, params, previous_content) do
-    context = %Context{previous_content: previous_content, readmix: rdmx}
+  defp section_name(BuiltIn, :section, name: name), do: name
+  defp section_name(_, _, _), do: nil
+
+  def blocks_to_iodata(rdmx, blocks) do
+    blocks_to_iodata(rdmx, blocks, _rendered = [])
+  end
+
+  # We do not turn the blocks into iodata immediately, because some blocks may
+  # want to find the content of previous blocks by matching on them. So we just
+  # populate the :rendered key of the blocks and when all blocks are rendered we
+  # can just reverse and assemble the binary.
+  defp blocks_to_iodata(rdmx, [block | blocks], rendered) do
+    case render_block(rdmx, block, _siblings = {rendered, blocks}) do
+      {:ok, new_block} -> blocks_to_iodata(rdmx, blocks, [new_block | rendered])
+      {:error, _} = err -> err
+    end
+  end
+
+  defp blocks_to_iodata(_rdmx, [], rendered) do
+    iodata =
+      Enum.reduce(rendered, [], fn
+        {:text, bin}, acc -> [bin | acc]
+        generated(rendered: {header, content, footer}), acc -> [header, content, footer | acc]
+      end)
+
+    {:ok, iodata}
+  end
+
+  defp render_block(_rdmx, {:text, iodata}, _), do: {:ok, {:text, iodata}}
+
+  defp render_block(rdmx, generated() = gen, siblings) do
+    generated(
+      mod: mod,
+      action: action,
+      params: params,
+      sub_blocks: sub_blocks,
+      spec:
+        %{
+          raw_header: raw_header,
+          raw_footer: raw_footer
+        } = spec
+    ) = gen
+
+    try do
+      case call_transformer(rdmx, mod, action, params, siblings, sub_blocks) do
+        {:ok, iodata} -> {:ok, generated(gen, rendered: {raw_header, iodata, raw_footer})}
+        {:error, reason} -> {:error, convert_error(reason, spec)}
+      end
+    catch
+      :throw, {:undef_var, _} = e -> {:error, convert_error(e, spec)}
+    end
+  end
+
+  defp call_transformer(rdmx, mod, action, params, siblings, previous_content) do
+    context = %Context{readmix: rdmx, siblings: siblings, previous_content: previous_content}
 
     case mod.generate(action, params, context) do
       {:ok, iodata} -> {:ok, iodata}

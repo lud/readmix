@@ -266,7 +266,7 @@ defmodule Readmix.Parser do
          source_path,
          loc
        ) do
-    {:generated,
+    {:spec,
      %BlockSpec{
        raw_header: raw_header,
        raw_footer: raw_footer,

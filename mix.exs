@@ -41,8 +41,8 @@ defmodule Readmix.MixProject do
       {:mox, "~> 1.2", only: :test},
       {:briefly, "~> 0.5.1", only: :test},
       {:dialyxir, "~> 1.4", only: :test, runtime: false},
-      {:ex_check, "~> 0.16.0", only: [:dev, :test]},
-      {:mix_audit, "~> 2.1", only: [:dev, :test]},
+      {:ex_check, "~> 0.16.0", only: [:dev, :test], runtime: false},
+      {:mix_audit, "~> 2.1", only: [:dev, :test], runtime: false},
       {:mix_version, "~> 2.4", only: [:dev, :test], runtime: false},
       {:modkit, "~> 0.6", only: [:dev, :test], runtime: false}
     ]

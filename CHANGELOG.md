@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 
 - *(libcheck)* Update Elixir Github workflow (#6)
 - Export formatter options
+- Export formatter options
 
 ## [0.4.0] - 2025-04-19
 

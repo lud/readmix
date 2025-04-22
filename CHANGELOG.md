@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.1] - 2025-04-22
+
+### ⚙️ Miscellaneous Tasks
+
+- *(libcheck)* Update Elixir Github workflow (#6)
+- Export formatter options
+
 ## [0.4.0] - 2025-04-19
 
 ### 🚀 Features

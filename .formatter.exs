@@ -1,4 +1,3 @@
-
 locals_without_parens = [action: 2]
 
 [

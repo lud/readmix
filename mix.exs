@@ -37,7 +37,7 @@ defmodule Readmix.MixProject do
 
       # Dev, Test
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:ex_doc, "~> 0.37.3", only: :dev, runtime: false},
+      {:ex_doc, "~> 0.38.1", only: :dev, runtime: false},
       {:mox, "~> 1.2", only: :test},
       {:briefly, "~> 0.5.1", only: :test},
       {:dialyxir, "~> 1.4", only: :test, runtime: false},

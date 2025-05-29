@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.0] - 2025-05-29
+
+### ⚙️ Miscellaneous Tasks
+
+- *(libcheck)* Update dependencies Github workflow (#7)
+- *(libcheck)* Update dependabot config (#8)
+- *(libcheck)* Update dependabot config (#9)
+
 ## [0.4.1] - 2025-04-22
 
 ### ⚙️ Miscellaneous Tasks

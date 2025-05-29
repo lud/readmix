@@ -32,7 +32,7 @@ defmodule Readmix.MixProject do
   defp deps do
     [
       # App
-      {:cli_mate, "~> 0.7", runtime: false},
+      {:cli_mate, "~> 0.8.1", runtime: false},
       {:nimble_options, "~> 1.0"},
 
       # Dev, Test

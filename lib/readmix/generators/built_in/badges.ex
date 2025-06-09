@@ -17,13 +17,11 @@ defmodule Readmix.Generators.BuiltIn.Badges do
 
     img_url =
       "https://img.shields.io/hexpm/v/"
-      |> URI.parse()
       |> URI.merge(path)
       |> URI.to_string()
 
     package_url =
       "https://hex.pm/packages/"
-      |> URI.parse()
       |> URI.merge(path)
       |> Map.merge(%{query: nil, fragment: nil})
       |> URI.to_string()

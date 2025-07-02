@@ -1,8 +1,9 @@
 defmodule ReadmixTest do
+  alias Readmix.Blocks.Generated
+  alias Readmix.Blocks.Text
   alias Readmix.Context
   import Mox
   import Readmix.TestHelpers
-  require Readmix.Records
   use ExUnit.Case
 
   doctest Readmix
@@ -31,7 +32,7 @@ defmodule ReadmixTest do
     end
 
     test "does not call anything for raw_blocks" do
-      blocks = [{:text, "hello"}]
+      blocks = [%Text{content: "hello"}]
       assert {:ok, iodata} = Readmix.blocks_to_iodata(test_new(), blocks)
       assert "hello" = IO.iodata_to_binary(iodata)
     end
@@ -113,14 +114,14 @@ defmodule ReadmixTest do
         |> expect(:generate, fn :sometf, [pos: 1, some: "foo"], context ->
           assert %Context{
                    siblings:
-                     {[{:text, "--before--\n\n"}],
+                     {[%Text{content: "--before--\n\n"}],
                       [
-                        {:text, "\n--between--\n\n" <> _},
-                        Readmix.Records.generated(
+                        %Text{content: "\n--between--\n\n" <> _},
+                        %Generated{
                           action: :sometf,
                           spec: %{generator: {_, _, [pos: 2, some: "bar"]}}
-                        ),
-                        {:text, "\n--after--\n"}
+                        },
+                        %Text{content: "\n--after--\n"}
                       ]},
                    previous_content: previous_content,
                    readmix: rdmx
@@ -136,13 +137,13 @@ defmodule ReadmixTest do
           assert %Context{
                    siblings:
                      {[
-                        {:text, "\n--between--\n\n"},
-                        Readmix.Records.generated(
+                        %Text{content: "\n--between--\n\n"},
+                        %Generated{
                           action: :sometf,
                           spec: %{generator: {_, _, [pos: 1, some: "foo"]}}
-                        ),
-                        {:text, "--before--\n\n"}
-                      ], [{:text, "\n--after--\n"}]},
+                        },
+                        %Text{content: "--before--\n\n"}
+                      ], [%Text{content: "\n--after--\n"}]},
                    previous_content: previous_content,
                    readmix: rdmx
                  } = context

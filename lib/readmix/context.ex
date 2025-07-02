@@ -1,11 +1,11 @@
 defmodule Readmix.Context do
-  import Readmix.Records
+  alias Readmix.Blocks.Generated
 
   @moduledoc """
   Helpers to access the context in generator actions.
   """
 
-  defstruct previous_content: [], readmix: nil, siblings: {[], []}
+  defstruct previous_content: [], readmix: nil, siblings: {[], []}, block: nil
 
   @doc """
   Returns a function that reads the given var from the given context.
@@ -36,8 +36,11 @@ defmodule Readmix.Context do
   def lookup_rendered_section(%__MODULE__{} = context, section_name) do
     {previous, _} = context.siblings
 
-    case List.keyfind(previous, section_name, generated(:section_name)) do
-      generated(rendered: {_, _, _}) = section -> {:ok, section}
+    case Enum.find(previous, fn
+           %Generated{section_name: ^section_name} -> true
+           _ -> false
+         end) do
+      %Generated{rendered: {_, _, _}} = section -> {:ok, section}
       nil -> {:error, {:section_not_found, section_name}}
     end
   end

@@ -95,6 +95,11 @@ defmodule Readmix.Generators.BuiltIn do
         type: :string,
         required: true,
         doc: "The name of the section."
+      ],
+      format: [
+        type: :boolean,
+        default: false,
+        doc: "Whether to format Elixir code blocks within the section."
       ]
     ]
 

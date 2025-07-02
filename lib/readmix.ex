@@ -1,9 +1,10 @@
 defmodule Readmix do
+  alias Readmix.Blocks.Generated
+  alias Readmix.Blocks.Text
   alias Readmix.BlockSpec
   alias Readmix.Context
   alias Readmix.Generators.BuiltIn
   alias Readmix.Scopes.Defaults
-  import Readmix.Records
 
   @moduledoc """
   Readmix is a tool for generating and maintaining documentation with dynamic
@@ -48,15 +49,7 @@ defmodule Readmix do
 
   defstruct [:resolver, :vars, :backup_fun]
 
-  @type block ::
-          record(:generated,
-            mod: module,
-            action: atom,
-            params: [term],
-            section_name: String.t() | nil,
-            spec: BlockSpec.t()
-          )
-          | {:text, binary}
+  @type block :: Generated.t() | Text.t()
 
   @type t :: %__MODULE__{
           resolver: function(),
@@ -311,7 +304,7 @@ defmodule Readmix do
     end
   end
 
-  defp preprocess_block(_rdmx, {:text, content}), do: {:ok, {:text, content}}
+  defp preprocess_block(_rdmx, {:text, content}), do: {:ok, %Text{content: content}}
 
   defp preprocess_block(rdmx, {:spec, block_spec}) do
     %BlockSpec{
@@ -322,14 +315,14 @@ defmodule Readmix do
     with {:ok, sub_blocks} <- preprocess_blocks(rdmx, sub_parsed),
          {:ok, {mod, params}} <- resolve_call(rdmx, ns, action, params) do
       {:ok,
-       generated(
+       %Generated{
          mod: mod,
          action: action,
          params: params,
          section_name: section_name(mod, action, params),
          spec: block_spec,
          sub_blocks: sub_blocks
-       )}
+       }}
     else
       {:error, reason} ->
         {:error, convert_error(reason, block_spec)}
@@ -390,7 +383,7 @@ defmodule Readmix do
     end
   end
 
-  defp section_name(BuiltIn, :section, name: name), do: name
+  defp section_name(BuiltIn, :section, args), do: Keyword.fetch!(args, :name)
   defp section_name(_, _, _), do: nil
 
   def blocks_to_iodata(rdmx, blocks) do
@@ -411,31 +404,27 @@ defmodule Readmix do
   defp blocks_to_iodata(_rdmx, [], rendered) do
     iodata =
       Enum.reduce(rendered, [], fn
-        {:text, bin}, acc -> [bin | acc]
-        generated(rendered: {header, content, footer}), acc -> [header, content, footer | acc]
+        %Text{content: bin}, acc ->
+          [bin | acc]
+
+        %Generated{rendered: {header, content, footer}}, acc ->
+          [header, content, footer | acc]
       end)
 
     {:ok, iodata}
   end
 
-  defp render_block(_rdmx, {:text, iodata}, _), do: {:ok, {:text, iodata}}
+  defp render_block(_rdmx, %Text{} = text_block, _), do: {:ok, text_block}
 
-  defp render_block(rdmx, generated() = gen, siblings) do
-    generated(
-      mod: mod,
-      action: action,
-      params: params,
+  defp render_block(rdmx, %Generated{} = block, siblings) do
+    %Generated{
       sub_blocks: sub_blocks,
-      spec:
-        %{
-          raw_header: raw_header,
-          raw_footer: raw_footer
-        } = spec
-    ) = gen
+      spec: %{raw_header: raw_header, raw_footer: raw_footer} = spec
+    } = block
 
     try do
-      case call_transformer(rdmx, mod, action, params, siblings, sub_blocks) do
-        {:ok, iodata} -> {:ok, generated(gen, rendered: {raw_header, iodata, raw_footer})}
+      case call_transformer(rdmx, block, siblings, sub_blocks) do
+        {:ok, iodata} -> {:ok, %{block | rendered: {raw_header, iodata, raw_footer}}}
         {:error, reason} -> {:error, convert_error(reason, spec)}
       end
     catch
@@ -443,8 +432,15 @@ defmodule Readmix do
     end
   end
 
-  defp call_transformer(rdmx, mod, action, params, siblings, previous_content) do
-    context = %Context{readmix: rdmx, siblings: siblings, previous_content: previous_content}
+  defp call_transformer(rdmx, block, siblings, previous_content) do
+    %Generated{mod: mod, action: action, params: params} = block
+
+    context = %Context{
+      readmix: rdmx,
+      siblings: siblings,
+      previous_content: previous_content,
+      block: block
+    }
 
     case mod.generate(action, params, context) do
       {:ok, iodata} -> {:ok, iodata}
@@ -479,30 +475,5 @@ defmodule Readmix do
 
   defp convert_error(reason, path, loc) do
     Readmix.Error.convert(reason, path, loc)
-  end
-
-  @doc """
-  Renders a block or a list of blocks as iodata without processing.
-  """
-  def content_to_iodata(%BlockSpec{} = block) do
-    %{
-      content: subs,
-      raw_header: raw_header,
-      raw_footer: raw_footer
-    } = block
-
-    [raw_header, content_to_iodata(subs), raw_footer]
-  end
-
-  def content_to_iodata([{:text, text} | blocks]) do
-    [text | content_to_iodata(blocks)]
-  end
-
-  def content_to_iodata([{:generated, spec} | blocks]) do
-    [content_to_iodata(spec) | content_to_iodata(blocks)]
-  end
-
-  def content_to_iodata([]) do
-    []
   end
 end

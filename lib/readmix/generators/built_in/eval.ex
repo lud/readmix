@@ -1,6 +1,7 @@
 defmodule Readmix.Generators.BuiltIn.Eval do
-  require Readmix.Records, as: Records
+  alias Readmix.Blocks.Generated
   alias Readmix.Context
+  alias Readmix.Generators.BuiltIn.Section
 
   @moduledoc false
 
@@ -18,11 +19,10 @@ defmodule Readmix.Generators.BuiltIn.Eval do
   def do_eval_section(params, context) do
     section_name = Keyword.fetch!(params, :section)
 
-    with {:ok, Records.generated(rendered: {_, source_block_content, _}) = section} <-
+    with {:ok, %Generated{} = section} <-
            Context.lookup_rendered_section(context, section_name),
-         source_block_content = IO.iodata_to_binary(source_block_content),
-         {:ok, elixir_source} <- strip_code_fences(source_block_content),
-         {:ok, quoted} <- string_to_quoted(elixir_source, section),
+         {:ok, start_line, elixir_source} <- lookup_code_block(section),
+         {:ok, quoted} <- string_to_quoted(elixir_source, section.spec.file, start_line),
          {:ok, eval_result} <- eval_code(quoted, params[:catch]) do
       {:ok, display_result(eval_result)}
     else
@@ -30,39 +30,21 @@ defmodule Readmix.Generators.BuiltIn.Eval do
     end
   end
 
-  defp strip_code_fences(source_block_content) do
-    source_block_content
-    |> String.trim()
-    |> case do
-      "```elixir" <> rest -> {:ok, strip_fence_end(rest)}
-      "```" <> rest -> {:ok, strip_fence_end(rest)}
-      _ -> {:error, :invalid_code_block}
+  defp lookup_code_block(section) do
+    with {:ok, chunks} <- Section.to_chunks(section),
+         {:code, "elixir", start_line, code} <- List.keyfind(chunks, :code, 0, :nochunk) do
+      {:ok, start_line, code}
+    else
+      {:error, _} = err -> err
+      :nochunk -> {:error, :not_found_code_block}
     end
   end
 
-  defp strip_fence_end(source_block_content) do
-    source_block_content
-    |> String.trim_leading(" ")
-    |> case do
-      "\n" <> rest -> String.trim_trailing(rest, "`")
-      _other -> {:error, :invalid_code_block}
-    end
-  end
-
-  defp string_to_quoted(elixir_source, section) do
-    Records.generated(rendered: {header, _, _}, spec: %{loc: {line, _col}, file: file}) = section
-    # add +1 line for code fences
-    # add newlines from block header
-    start_line = line + 1 + count_newlines(header, 0)
-
+  defp string_to_quoted(elixir_source, file, start_line) do
     {:ok, Code.string_to_quoted!(elixir_source, file: file, line: start_line)}
   rescue
     e -> {:error, e}
   end
-
-  defp count_newlines(<<?\n, rest::binary>>, n), do: count_newlines(rest, n + 1)
-  defp count_newlines(<<_, rest::binary>>, n), do: count_newlines(rest, n)
-  defp count_newlines(<<>>, n), do: n
 
   @catch_tag :__catched_value__
 

@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.0] - 2025-07-02
+
+### 🚀 Features
+
+- Added the format option to sections to format fenced elixir code
+
+### ⚙️ Miscellaneous Tasks
+
+- Refactor for dialyzer OTP 28
+- *(libcheck)* Update Elixir Github workflow (#14)
+- *(libcheck)* Update Elixir Github workflow (#16)
+
 ## [0.5.0] - 2025-05-29
 
 ### ⚙️ Miscellaneous Tasks

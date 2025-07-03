@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.1] - 2025-07-03
+
+### 🚀 Features
+
+- Section formatter will disable force_do_end_blocks
+
 ## [0.6.0] - 2025-07-02
 
 ### 🚀 Features

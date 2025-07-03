@@ -20,11 +20,7 @@ defmodule Readmix.Generators.BuiltIn.Section do
 
   defp format_code_blocks(iodata, %Generated{} = section) do
     %Generated{
-      spec: %{
-        raw_header: raw_header,
-        file: file,
-        loc: {line, _col}
-      }
+      spec: %{raw_header: raw_header, file: file, loc: {line, _col}}
     } = section
 
     case to_chunks(raw_header, iodata, line) do
@@ -110,7 +106,14 @@ defmodule Readmix.Generators.BuiltIn.Section do
 
   defp format_chunk({:code, "elixir", line, code}, file) do
     {_, formatter_opts} = Mix.Tasks.Format.formatter_for_file(file)
-    opts = [file: file, line: line, migrate: true] ++ formatter_opts
+
+    opts =
+      Keyword.merge(formatter_opts,
+        file: file,
+        line: line,
+        migrate: true,
+        force_do_end_blocks: false
+      )
 
     try do
       new_code = Code.format_string!(code, opts)

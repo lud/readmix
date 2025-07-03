@@ -99,7 +99,12 @@ defmodule Readmix.Generators.BuiltIn do
       format: [
         type: :boolean,
         default: false,
-        doc: "Whether to format Elixir code blocks within the section."
+        doc: """
+        Whether to format Elixir code blocks within the section.
+
+        Uses the local .formatter.exs options except `:force_do_end_blocks` is
+        always `false` and `:migrate` is set to `true`.
+        """
       ]
     ]
 

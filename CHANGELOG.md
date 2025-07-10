@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.2] - 2025-07-10
+
+### 🐛 Bug Fixes
+
+- Correctly provide file and line metadata on eval block
+
 ## [0.6.1] - 2025-07-03
 
 ### 🚀 Features

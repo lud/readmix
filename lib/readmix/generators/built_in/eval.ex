@@ -23,7 +23,7 @@ defmodule Readmix.Generators.BuiltIn.Eval do
            Context.lookup_rendered_section(context, section_name),
          {:ok, start_line, elixir_source} <- lookup_code_block(section),
          {:ok, quoted} <- string_to_quoted(elixir_source, section.spec.file, start_line),
-         {:ok, eval_result} <- eval_code(quoted, params[:catch]) do
+         {:ok, eval_result} <- eval_code(quoted, params[:catch], section.spec.file, start_line) do
       {:ok, display_result(eval_result)}
     else
       {:error, _} = err -> err
@@ -48,17 +48,17 @@ defmodule Readmix.Generators.BuiltIn.Eval do
 
   @catch_tag :__catched_value__
 
-  defp eval_code(quoted, true = _catch_errors) do
-    {:ok, Code.eval_quoted(quoted)}
+  defp eval_code(quoted, true = _catch_errors?, file, line) do
+    {:ok, Code.eval_quoted(quoted, [], file: file, line: line)}
   rescue
-    CompileError -> {:error, :invalid_code}
+    CompileError -> {:error, :invalid_elixir_code}
     e -> {:ok, {@catch_tag, Exception.format_banner(:error, e, __STACKTRACE__)}}
   catch
     kind, e -> {:ok, {@catch_tag, Exception.format_banner(kind, e, __STACKTRACE__)}}
   end
 
-  defp eval_code(quoted, _catch_errors) do
-    {:ok, Code.eval_quoted(quoted)}
+  defp eval_code(quoted, false = _catch_errors, file, line) do
+    {:ok, Code.eval_quoted(quoted, [], file: file, line: line)}
   rescue
     CompileError -> {:error, :invalid_elixir_code}
   end

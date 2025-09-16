@@ -185,8 +185,6 @@ defmodule Readmix do
         stamp
       ])
 
-    File.mkdir_p!(backup_dir)
-
     fn orginal_path, content ->
       sub_path =
         case orginal_path do

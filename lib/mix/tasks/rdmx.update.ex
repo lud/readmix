@@ -8,6 +8,7 @@ defmodule Mix.Tasks.Rdmx.Update do
 
   @command [
     module: __MODULE__,
+    doc: "Regenerates the blocks in the given files.",
     arguments: [
       path: [
         required: true,

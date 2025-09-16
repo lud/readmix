@@ -11,11 +11,10 @@ defmodule Mix.Tasks.Rdmx.Update do
     arguments: [
       path: [
         required: true,
+        repeat: false,
         type: :string,
         doc: """
-        The file or directory to update.
-
-        When a directory is given, only .md files are updated.
+        The file to update. Accepts multiple files.
         """
       ]
     ],
@@ -37,12 +36,11 @@ defmodule Mix.Tasks.Rdmx.Update do
         type: :string,
         keep: true,
         doc: """
-        Provide variables for generators using the
-        `Readmix.Scopes.Defaults` scope.
+        Define variables for generators. Overrides variables defined from scopes.
 
         Variables must be given with a key and value:
 
-            --var "some_key=some_value"
+              --var "some_key=some_value"
         """
       ]
     ]

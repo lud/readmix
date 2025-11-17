@@ -91,7 +91,6 @@ defmodule Readmix.MixProject do
   end
 
   def update_readme(vsn) do
-    :code.get_path() |> dbg(limit: :infinity)
     :ok = Readmix.update_file(Readmix.new(vars: %{app_vsn: vsn}), "README.md")
   end
 

@@ -5,7 +5,7 @@ defmodule Readmix.MixProject do
   def project do
     [
       app: :readmix,
-      version: "0.6.2",
+      version: "0.6.3",
       description: "A tool to generate parts of documentation with custom generator functions.",
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
@@ -91,6 +91,7 @@ defmodule Readmix.MixProject do
   end
 
   def update_readme(vsn) do
+    :code.get_path() |> dbg(limit: :infinity)
     :ok = Readmix.update_file(Readmix.new(vars: %{app_vsn: vsn}), "README.md")
   end
 

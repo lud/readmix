@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.0] - 2025-11-29
+
+### 🚀 Features
+
+- Added support for direct code evaluation in :eval blocks
+
 ## [0.6.3] - 2025-11-17
 
 ### 🚀 Features

@@ -48,6 +48,12 @@ defmodule Readmix.Error do
     "generator error in #{file_loc(e)}, (#{inspect(mod)}, #{inspect(action)}, #{inspect(params)}), got: #{format_reason(reason)}"
   end
 
+  def message(%{kind: :user_error} = e) do
+    {mod, action, params, reason} = e.arg
+
+    "error in #{file_loc(e)}, (#{inspect(mod)}, #{inspect(action)}, #{inspect(params)}), got: #{format_reason(reason)}"
+  end
+
   defp format_reason(%{__exception__: true} = e), do: Exception.message(e)
   defp format_reason(reason), do: inspect(reason)
 
@@ -57,7 +63,13 @@ defmodule Readmix.Error do
   end
 
   @doc false
+  @deprecated "use of/3"
   def convert(reason, path, loc) do
+    of(reason, path, loc)
+  end
+
+  @doc false
+  def of(reason, path, loc) do
     {kind, arg} =
       case reason do
         {:file_error, ^path, reason} ->
@@ -79,6 +91,9 @@ defmodule Readmix.Error do
           kind_arg
 
         {:params_validation_error, {%NimbleOptions.ValidationError{}, _}} = kind_arg ->
+          kind_arg
+
+        {:user_error, {_mod, _action, _params, _reason}} = kind_arg ->
           kind_arg
       end
 

@@ -132,9 +132,26 @@ defmodule Readmix.Generators.BuiltIn do
 
   """
   action :eval,
-    as: :eval_section,
+    as: :eval_block,
     params: [
-      section: [type: :string, required: true, doc: "The name of the section to evaluate."],
+      section: [
+        type: :string,
+        required: false,
+        doc:
+          "The name of the section to evaluate. One and only one of `section` or `code` parameters is required."
+      ],
+      code: [
+        type: :string,
+        required: false,
+        doc:
+          "The code to evaluate. One and only one of `section` or `code` parameters is required."
+      ],
+      as_text: [
+        type: :boolean,
+        default: false,
+        doc:
+          "When true, the eval result must be a string and that string will be printed as-is without code fences."
+      ],
       catch: [
         type: :boolean,
         default: false,
@@ -158,5 +175,5 @@ defmodule Readmix.Generators.BuiltIn do
   defdelegate generate_section(params, context), to: Section
 
   @doc false
-  defdelegate eval_section(params, context), to: Eval
+  defdelegate eval_block(params, context), to: Eval
 end

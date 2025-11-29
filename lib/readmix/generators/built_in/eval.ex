@@ -5,28 +5,52 @@ defmodule Readmix.Generators.BuiltIn.Eval do
 
   @moduledoc false
 
-  def eval_section(params, context) do
+  def eval_block(params, context) do
+    case Map.new(params) do
+      %{section: _, code: _} ->
+        {:error, "rdmx:eval does not accept both section and code parameters"}
+
+      %{section: _} = params ->
+        no_ansi(fn -> eval_section(params, context) end)
+
+      %{code: _} = params ->
+        no_ansi(fn -> eval_code(params, context) end)
+
+      %{} ->
+        {:error, "rdmx:eval missing one of section or code parameter"}
+    end
+  end
+
+  defp no_ansi(fun) do
     ansi_enabled? = Application.get_env(:elixir, :ansi_enabled, false)
     Application.put_env(:elixir, :ansi_enabled, false)
 
     try do
-      do_eval_section(params, context)
+      fun.()
     after
       Application.put_env(:elixir, :ansi_enabled, ansi_enabled?)
     end
   end
 
-  def do_eval_section(params, context) do
-    section_name = Keyword.fetch!(params, :section)
+  defp eval_section(params, context) do
+    section_name = params.section
 
-    with {:ok, %Generated{} = section} <-
-           Context.lookup_rendered_section(context, section_name),
+    with {:ok, %Generated{} = section} <- Context.lookup_rendered_section(context, section_name),
          {:ok, start_line, elixir_source} <- lookup_code_block(section),
          {:ok, quoted} <- string_to_quoted(elixir_source, section.spec.file, start_line),
          {:ok, eval_result} <- eval_code(quoted, params[:catch], section.spec.file, start_line) do
-      {:ok, display_result(eval_result)}
+      {:ok, display_result(eval_result, params, context)}
     else
       {:error, _} = err -> err
+    end
+  end
+
+  defp eval_code(params, context) do
+    %{block: %{spec: %{file: file, loc: {line, _}}}} = context
+
+    with {:ok, quoted} <- string_to_quoted(params.code, file, line),
+         {:ok, eval_result} <- eval_code(quoted, params[:catch], file, line) do
+      {:ok, display_result(eval_result, params, context)}
     end
   end
 
@@ -63,7 +87,7 @@ defmodule Readmix.Generators.BuiltIn.Eval do
     CompileError -> {:error, :invalid_elixir_code}
   end
 
-  defp display_result({@catch_tag, banner}) when is_binary(banner) do
+  defp display_result({@catch_tag, banner}, _params, _ctx) when is_binary(banner) do
     """
     ```
     #{banner}
@@ -73,11 +97,28 @@ defmodule Readmix.Generators.BuiltIn.Eval do
 
   @inspect_opts pretty: true, custom_options: [sort_maps: true]
 
-  defp display_result({value, _bindings}) do
-    """
-    ```elixir
-    #{inspect(value, @inspect_opts)}
-    ```
-    """
+  defp display_result({value, _bindings}, params, context) do
+    if params.as_text do
+      string =
+        try do
+          to_string(value)
+        rescue
+          Protocol.UndefinedError ->
+            Context.error!(
+              context,
+              "output value #{inspect(value)} does not implement String.Chars"
+            )
+        end
+
+      """
+      #{string}
+      """
+    else
+      """
+      ```elixir
+      #{inspect(value, @inspect_opts)}
+      ```
+      """
+    end
   end
 end

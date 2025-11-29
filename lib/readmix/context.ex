@@ -7,6 +7,8 @@ defmodule Readmix.Context do
 
   defstruct previous_content: [], readmix: nil, siblings: {[], []}, block: nil
 
+  @type t :: %__MODULE__{}
+
   @doc """
   Returns a function that reads the given var from the given context.
 
@@ -43,5 +45,13 @@ defmodule Readmix.Context do
       %Generated{rendered: {_, _, _}} = section -> {:ok, section}
       nil -> {:error, {:section_not_found, section_name}}
     end
+  end
+
+  @spec error!(t, term) :: no_return
+  def error!(context, reason) do
+    %{block: %Readmix.Blocks.Generated{spec: spec, mod: mod, action: action, params: params}} =
+      context
+
+    raise Readmix.Error.of({:user_error, {mod, action, params, reason}}, spec.file, spec.loc)
   end
 end

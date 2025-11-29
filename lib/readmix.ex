@@ -472,6 +472,6 @@ defmodule Readmix do
   end
 
   defp convert_error(reason, path, loc) do
-    Readmix.Error.convert(reason, path, loc)
+    Readmix.Error.of(reason, path, loc)
   end
 end

@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.1] - 2026-04-12
+
+### 🚀 Features
+
+- Added silent option for eval block
+
 ## [0.7.0] - 2025-11-29
 
 ### 🚀 Features
@@ -96,5 +102,4 @@ All notable changes to this project will be documented in this file.
 - Relax Elixir version
 - Update dependabot config
 - Suggest to use in :test too for ElixirLS
-
 

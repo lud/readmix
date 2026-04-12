@@ -220,6 +220,34 @@ defmodule Readmix.Generators.BuiltIn.EvalTest do
       assert expected == transform_string!(input)
     end
 
+    test "silent option produces no output for section eval" do
+      input = ~S"""
+      <!-- rdmx rdmx:section name:my_code -->
+      ```elixir
+      a = 1 + 1
+      "result: #{a}"
+      ```
+      <!-- rdmx /rdmx:section -->
+
+      <!-- rdmx rdmx:eval section:my_code silent:true -->
+      <!-- rdmx /rdmx:eval -->
+      """
+
+      expected = ~S"""
+      <!-- rdmx rdmx:section name:my_code -->
+      ```elixir
+      a = 1 + 1
+      "result: #{a}"
+      ```
+      <!-- rdmx /rdmx:section -->
+
+      <!-- rdmx rdmx:eval section:my_code silent:true -->
+      <!-- rdmx /rdmx:eval -->
+      """
+
+      assert expected == transform_string!(input)
+    end
+
     test "requires referenced section to exist" do
       input = ~S"""
       <!-- rdmx rdmx:eval section:missing_section -->
@@ -333,6 +361,62 @@ defmodule Readmix.Generators.BuiltIn.EvalTest do
       ```elixir
       3
       ```
+      <!-- rdmx /rdmx:eval -->
+      """
+
+      assert expected == transform_string!(input)
+    end
+
+    test "silent option produces no output for raw code" do
+      input = ~S"""
+      <!-- rdmx rdmx:eval code:"1 + 1" silent:true -->
+      <!-- rdmx /rdmx:eval -->
+      """
+
+      expected = ~S"""
+      <!-- rdmx rdmx:eval code:"1 + 1" silent:true -->
+      <!-- rdmx /rdmx:eval -->
+      """
+
+      assert expected == transform_string!(input)
+    end
+
+    test "silent option replaces previous content" do
+      input = ~S"""
+      <!-- rdmx rdmx:eval code:"1 + 1" silent:true -->
+      ```elixir
+      stale content that should be removed
+      ```
+      <!-- rdmx /rdmx:eval -->
+      """
+
+      expected = ~S"""
+      <!-- rdmx rdmx:eval code:"1 + 1" silent:true -->
+      <!-- rdmx /rdmx:eval -->
+      """
+
+      assert expected == transform_string!(input)
+    end
+
+    test "silent option still raises on evaluation errors" do
+      input = ~S"""
+      <!-- rdmx rdmx:eval code:"List.first(%{})" silent:true -->
+      <!-- rdmx /rdmx:eval -->
+      """
+
+      assert_raise FunctionClauseError, fn ->
+        Readmix.transform_string(test_new(), input)
+      end
+    end
+
+    test "silent with catch swallows the exception banner" do
+      input = ~S"""
+      <!-- rdmx rdmx:eval code:"List.first(%{})" silent:true catch:true -->
+      <!-- rdmx /rdmx:eval -->
+      """
+
+      expected = ~S"""
+      <!-- rdmx rdmx:eval code:"List.first(%{})" silent:true catch:true -->
       <!-- rdmx /rdmx:eval -->
       """
 

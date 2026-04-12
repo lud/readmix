@@ -156,6 +156,12 @@ defmodule Readmix.Generators.BuiltIn do
         type: :boolean,
         default: false,
         doc: "Allow errors and display exception banners as output in case of error."
+      ],
+      silent: [
+        type: :boolean,
+        default: false,
+        doc:
+          "When true, evaluates the code but does not output anything. Useful to have evaluated code in context for next eval blocks."
       ]
     ]
 

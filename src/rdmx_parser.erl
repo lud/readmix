@@ -39,7 +39,9 @@ block_end({_NS, _Action, [{_, Meta, _} | _]}) ->
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 1996-2024. All Rights Reserved.
+%% SPDX-License-Identifier: Apache-2.0
+%%
+%% Copyright Ericsson AB 1996-2025. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -223,7 +225,7 @@ yecctoken2string1(Other) ->
 
 
 
--file("rdmx_parser.erl", 226).
+-file("rdmx_parser.erl", 228).
 
 -dialyzer({nowarn_function, yeccpars2/7}).
 -compile({nowarn_unused_function,  yeccpars2/7}).

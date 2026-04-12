@@ -87,6 +87,10 @@ defmodule Readmix.Generators.BuiltIn.Eval do
     CompileError -> {:error, :invalid_elixir_code}
   end
 
+  defp display_result(_result, %{silent: true}, _ctx) do
+    ""
+  end
+
   defp display_result({@catch_tag, banner}, _params, _ctx) when is_binary(banner) do
     """
     ```

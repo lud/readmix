@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.2] - 2026-04-15
+
+### ⚙️ Miscellaneous Tasks
+
+- Relax cli_mate dependency requirement
+
 ## [0.7.1] - 2026-04-12
 
 ### 🚀 Features

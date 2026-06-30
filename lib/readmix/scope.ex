@@ -14,7 +14,7 @@ defmodule Readmix.Scope do
 
   ```elixir
   defmodule MyScope do
-    @behaviour Readmix.Env
+    @behaviour Readmix.Scope
 
     @impl true
     def get_vars do

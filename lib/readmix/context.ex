@@ -47,6 +47,12 @@ defmodule Readmix.Context do
     end
   end
 
+  @doc """
+  Raises a `Readmix.Error` from within a generator action.
+
+  The error is tagged with the location of the block currently being rendered,
+  so the reported message points back to the offending tag in the source file.
+  """
   @spec error!(t, term) :: no_return
   def error!(context, reason) do
     %{block: %Readmix.Blocks.Generated{spec: spec, mod: mod, action: action, params: params}} =

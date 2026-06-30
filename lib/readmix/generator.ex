@@ -96,6 +96,20 @@ defmodule Readmix.Generator do
     end
   end
 
+  @doc """
+  Declares a generator action.
+
+  The first argument is the action name as used in document tags. The second is
+  a keyword list describing the action:
+
+  * `:as` - the name of the private function implementing the action. Defaults
+    to the action name itself.
+  * `:params` - a `NimbleOptions` schema validating the parameters accepted by
+    the action.
+
+  A `@doc` attribute placed immediately before the `action/2` call is captured
+  and used to document the action in the generated module documentation.
+  """
   defmacro action(atom, spec) when is_atom(atom) and is_list(spec) do
     quote bind_quoted: binding() do
       attr_doc =

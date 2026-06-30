@@ -17,6 +17,13 @@ defmodule Readmix.Parser do
   @external_resource "src/rdmx_lexer.xrl"
 
   defmodule ParseError do
+    @moduledoc """
+    Exception raised when a document cannot be parsed for Readmix blocks.
+
+    It carries the `:kind` of error, its location (`:loc`), the offending
+    `:source` snippet and the `:file` it originates from.
+    """
+
     defexception [:kind, :loc, :source, :file, :arg]
 
     def message(%{kind: :illegal_block_end_params} = e) do
@@ -52,6 +59,7 @@ defmodule Readmix.Parser do
     # Parser/lexer errors may contain location and/or source. In case they do not,
     # errors are always wrapped in a tuple with the loc/source of the parent
     # parser actionction.
+    @doc false
     def convert_error({reason, loc, source}, file) do
       {kind, loc, source, arg} =
         case reason do
@@ -78,6 +86,12 @@ defmodule Readmix.Parser do
     end
   end
 
+  @doc """
+  Parses a source string into a list of blocks.
+
+  `source_path` is the file name used to report locations in parse errors.
+  Returns `{:ok, blocks}` or `{:error, %ParseError{}}`.
+  """
   def parse_string(source, source_path) do
     chunks = parse_string(to_charlist(source), {1, 1}, [], [])
     blocks = build_blocks(chunks, source_path)

@@ -57,6 +57,23 @@ defmodule Readmix do
           vars: %{optional(atom) => term}
         }
 
+  @doc """
+  Creates a new Readmix instance from the given options.
+
+  ## Options
+
+  * `:generators` - a map of `%{namespace => module}` defining the generators
+    available to blocks. Defaults to the application configuration, falling back
+    to the built-in generators.
+  * `:vars` - a map of variables made available to blocks. Takes precedence over
+    variables provided by scope modules.
+  * `:scopes` - a list of scope modules providing variables. Defaults to the
+    application configuration, falling back to `default_scopes/0`.
+  * `:backup?` - whether to back up files before updating them. Defaults to
+    `true`.
+  * `:backup_dir` - the root directory used to store backups. Defaults to
+    `default_backup_directory/0`.
+  """
   def new(opts) do
     %__MODULE__{
       resolver: opt_resolver(opts),
@@ -239,6 +256,13 @@ defmodule Readmix do
     Application.get_env(:readmix, :scopes, default_scopes())
   end
 
+  @doc """
+  Transforms the file at the given path in place, replacing the content of its
+  Readmix blocks.
+
+  Unless backups are disabled, a copy of the original file is written before the
+  file is overwritten. Returns `:ok` or `{:error, reason}`.
+  """
   def update_file(rdmx, path) do
     with {:ok, content} <- read_source(path),
          {:ok, iodata} <- transform_string(rdmx, content, source_path: path),
@@ -260,6 +284,13 @@ defmodule Readmix do
     rdmx.backup_fun.(path, content)
   end
 
+  @doc """
+  Transforms a string, replacing the content of its Readmix blocks, and returns
+  the result as a binary.
+
+  Accepts a `:source_path` option used to report the file name in error
+  messages. Returns `{:ok, binary}` or `{:error, reason}`.
+  """
   def transform_string(rdmx, string, opts \\ [])
 
   def transform_string(rdmx, string, opts) do
@@ -268,6 +299,12 @@ defmodule Readmix do
     end
   end
 
+  @doc """
+  Like `transform_string/3` but returns the result as iodata instead of a
+  binary.
+
+  Returns `{:ok, iodata}` or `{:error, reason}`.
+  """
   def transform_string_to_iodata(rdmx, string, opts \\ [])
 
   def transform_string_to_iodata(rdmx, string, opts) when is_binary(string) do
@@ -277,6 +314,12 @@ defmodule Readmix do
     end
   end
 
+  @doc """
+  Parses a string into a list of blocks without rendering them.
+
+  The optional `source_path` is used to report the file name in parse error
+  messages. Returns `{:ok, blocks}` or `{:error, reason}`.
+  """
   def parse_string(string, source_path \\ nil)
 
   def parse_string(string, nil) do
@@ -384,6 +427,11 @@ defmodule Readmix do
   defp section_name(BuiltIn, :section, args), do: Keyword.fetch!(args, :name)
   defp section_name(_, _, _), do: nil
 
+  @doc """
+  Renders a list of preprocessed blocks into iodata.
+
+  Returns `{:ok, iodata}` or `{:error, reason}`.
+  """
   def blocks_to_iodata(rdmx, blocks) do
     blocks_to_iodata(rdmx, blocks, _rendered = [])
   end
@@ -447,6 +495,9 @@ defmodule Readmix do
     end
   end
 
+  @doc """
+  Returns a human-readable message for an error returned by Readmix functions.
+  """
   def format_error(%Readmix.Parser.ParseError{} = e) do
     Readmix.Parser.ParseError.message(e)
   end

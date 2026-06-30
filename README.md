@@ -19,7 +19,7 @@ by adding `readmix` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:readmix, "~> 0.7", only: [:dev, :test], runtime: false},
+    {:readmix, "~> 0.8", only: [:dev, :test], runtime: false},
   ]
 end
 ```

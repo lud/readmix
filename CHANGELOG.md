@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.0] - 2026-06-30
+
+### 🚀 Features
+
+- Allow readmix to be ran in elixir scripts outside of a mix project
+
+### 📚 Documentation
+
+- Add documentation to public API
+
 ## [0.7.2] - 2026-04-15
 
 ### ⚙️ Miscellaneous Tasks

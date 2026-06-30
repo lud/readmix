@@ -15,7 +15,7 @@ _mix_format:
   mix format
 
 _mix_check:
-  mix check
+  mix libdev.check
 
 _git_status:
   git status

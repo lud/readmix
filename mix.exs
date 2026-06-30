@@ -36,13 +36,9 @@ defmodule Readmix.MixProject do
       {:nimble_options, "~> 1.0"},
 
       # Dev, Test
-      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:ex_doc, "~> 0.40.0", only: :dev, runtime: false},
+      {:libdev, ">= 0.0.0", only: [:dev, :test], runtime: false},
       {:mox, "~> 1.2", only: :test},
-      {:briefly, "~> 0.5.1", only: :test},
-      {:dialyxir, "~> 1.4", only: :test, runtime: false},
-      {:ex_check, "~> 0.16.0", only: [:dev, :test], runtime: false},
-      {:mix_audit, "~> 2.1", only: [:dev, :test], runtime: false}
+      {:briefly, "~> 0.5.1", only: :test}
     ]
   end
 

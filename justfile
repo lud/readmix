@@ -1,4 +1,4 @@
-deps:
+_mix_deps:
   mix deps.get
 
 test:
@@ -23,5 +23,5 @@ _git_status:
 readme:
   mix rdmx.update README.md
 
-check: deps _mix_format _mix_check readme _git_status
+check: _mix_deps _mix_format _mix_check readme _git_status
 

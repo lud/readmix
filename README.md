@@ -17,7 +17,7 @@ by adding `readmix` to your list of dependencies in `mix.exs`:
 
 <!-- rdmx :app_dep only:"dev,test" runtime:false vsn:$app_vsn -->
 ```elixir
-def deps do
+defp deps do
   [
     {:readmix, "~> 0.8", only: [:dev, :test], runtime: false},
   ]

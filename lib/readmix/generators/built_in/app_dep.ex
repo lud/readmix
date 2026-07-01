@@ -19,7 +19,7 @@ defmodule Readmix.Generators.BuiltIn.AppDep do
     snippet =
       """
       ```elixir
-      def deps do
+      defp deps do
         [
           {#{elems}}#{comma}
         ]

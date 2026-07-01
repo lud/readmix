@@ -40,7 +40,7 @@ defmodule Readmix.Generators.BuiltIn.AppDepTest do
         """
         <!-- rdmx :app_dep -->
         ```elixir
-        def deps do
+        defp deps do
           [
             {:readmix, "~> #{current_vsn(:minor)}"},
           ]
@@ -62,7 +62,7 @@ defmodule Readmix.Generators.BuiltIn.AppDepTest do
         """
         <!-- rdmx :app_dep comma:false patch:true -->
         ```elixir
-        def deps do
+        defp deps do
           [
             {:readmix, "~> #{current_vsn(:full)}"}
           ]
@@ -84,7 +84,7 @@ defmodule Readmix.Generators.BuiltIn.AppDepTest do
         """
         <!-- rdmx :app_dep vsn:"1.2.3" -->
         ```elixir
-        def deps do
+        defp deps do
           [
             {:readmix, "~> 1.2"},
           ]
@@ -106,7 +106,7 @@ defmodule Readmix.Generators.BuiltIn.AppDepTest do
         """
         <!-- rdmx :app_dep otp_app:mox vsn:"3.3.3" -->
         ```elixir
-        def deps do
+        defp deps do
           [
             {:mox, "~> 3.3"},
           ]
@@ -128,7 +128,7 @@ defmodule Readmix.Generators.BuiltIn.AppDepTest do
         """
         <!-- rdmx :app_dep only:"dev,test" runtime:false -->
         ```elixir
-        def deps do
+        defp deps do
           [
             {:readmix, "~> #{current_vsn(:minor)}", only: [:dev, :test], runtime: false},
           ]

@@ -75,7 +75,7 @@ defmodule ReadmixTest do
       expected = """
       <!-- rdmx :app_dep vsn:"99.99.99" -->
       ```elixir
-      def deps do
+      defp deps do
         [
           {:readmix, "~> 99.99"},
         ]

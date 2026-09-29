@@ -2,7 +2,7 @@ defmodule Mix.Tasks.Rdmx.Update do
   alias CliMate.CLI
   use Mix.Task
 
-  @shortdoc "Updates blocks in a file or directory"
+  @shortdoc "Updates blocks in files"
 
   @requirements ["app.config"]
 
@@ -12,10 +12,10 @@ defmodule Mix.Tasks.Rdmx.Update do
     arguments: [
       path: [
         required: true,
-        repeat: false,
+        repeat: true,
         type: :string,
         doc: """
-        The file to update. Accepts multiple files.
+        The files to update.
         """
       ]
     ],
@@ -73,6 +73,9 @@ defmodule Mix.Tasks.Rdmx.Update do
   # Update a single file
   mix rdmx.update README.md
 
+  # Update multiple files
+  mix rdmx.update README.md guides/*.md
+
   # Update with custom variables
   mix rdmx.update README.md --var "app_vsn=1.2.3"
 
@@ -88,8 +91,6 @@ defmodule Mix.Tasks.Rdmx.Update do
   def run(argv) do
     %{options: options, arguments: arguments} = CLI.parse_or_halt!(argv, @command)
 
-    file = arguments.path
-
     variables =
       Map.new(options.var, fn var ->
         case String.split(var, "=", parts: 2) do
@@ -100,9 +101,22 @@ defmodule Mix.Tasks.Rdmx.Update do
 
     rdmx = Readmix.new(backup?: options.backup, backup_dir: options.backup_dir, vars: variables)
 
+    results = Enum.map(arguments.path, &update_file(rdmx, &1))
+
+    if Enum.any?(results, &(&1 == :error)) do
+      CLI.halt(1)
+    end
+  end
+
+  defp update_file(rdmx, file) do
     case Readmix.update_file(rdmx, file) do
-      :ok -> CLI.success("Updated #{file}")
-      {:error, reason} -> CLI.halt_error(Readmix.format_error(reason))
+      :ok ->
+        CLI.success("Updated #{file}")
+        :ok
+
+      {:error, reason} ->
+        CLI.error(Readmix.format_error(reason))
+        :error
     end
   end
 end
